@@ -1,0 +1,65 @@
+#ifndef ADMINCLUB_H
+#define ADMINCLUB_H
+
+#include <QWidget>
+#include <QLabel>
+#include <QPushButton>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QScrollArea>
+#include <QFrame>
+#include <QLineEdit>
+
+class AdminClub : public QWidget
+{
+    Q_OBJECT
+
+public:
+    explicit AdminClub(QWidget *parent = nullptr);
+    ~AdminClub();
+
+signals:
+    void navigateToHome();
+    void navigateToMembers();
+    void navigateToNotifications();
+
+private slots:
+    void onHomeButtonClicked();
+    void onProfileButtonClicked();
+    void onGroupsButtonClicked();
+    void onNotificationsButtonClicked();
+    void onAddClubClicked();
+
+private:
+    void setupUI();
+    void setupClubList();
+    void setupNavigation();
+    void createClubCard(const QString &name, int members, const QString &leader);
+
+    QFrame* createRoundedFrame();
+
+    // Main layout
+    QVBoxLayout *mainLayout;
+
+    // Title and search
+    QLabel *titleLabel;
+    QFrame *searchFrame;
+    QLineEdit *searchEdit;
+
+    // Club list
+    QHBoxLayout *clubsHeaderLayout;
+    QLabel *clubsLabel;
+    QPushButton *addClubButton;
+    QScrollArea *scrollArea;
+    QWidget *scrollContent;
+    QVBoxLayout *clubsLayout;
+
+    // Navigation bar
+    QFrame *navigationFrame;
+    QPushButton *homeButton;
+    QPushButton *profileButton;
+    QPushButton *groupsButton;
+    QPushButton *notificationsButton;
+};
+
+#endif // ADMINCLUB_H
