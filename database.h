@@ -97,7 +97,7 @@ public:
 // Load default club photo as QByteArray
 static QByteArray loadDefaultClubPhoto() {
     // Load default club photo from resources
-    QImage defaultImage(":/images/resources/default_club.png");
+    QImage defaultImage(":/images/resources/club_logo.png");
 
     if (defaultImage.isNull()) {
         qDebug() << "Failed to load default club image";
