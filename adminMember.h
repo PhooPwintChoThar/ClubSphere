@@ -2,13 +2,13 @@
 #define ADMINMEMBER_H
 
 #include <QWidget>
-#include <QLabel>
-#include <QPushButton>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QLabel>
+#include <QPushButton>
+#include <QLineEdit>
 #include <QScrollArea>
 #include <QFrame>
-#include <QLineEdit>
 
 class AdminMember : public QWidget
 {
@@ -28,38 +28,32 @@ private slots:
     void onProfileButtonClicked();
     void onGroupsButtonClicked();
     void onNotificationsButtonClicked();
+    void searchMembers(const QString &searchText);
 
 private:
-    void setupUI();
-    void setupMemberList();
-    void toggleUserSuspension(const QString &userId, bool suspend);
-    void setupSearchFunctionality();
-    void searchMembers(const QString &searchText);
-    void setupNavigation();
-    void createMemberCard(const QString &name, const QString &id, int points, bool suspended);
-
-    QFrame* createRoundedFrame();
-
-    // Main layout
+    // UI components
     QVBoxLayout *mainLayout;
-
-    // Title and search
     QLabel *titleLabel;
     QFrame *searchFrame;
     QLineEdit *searchEdit;
-
-    // Member list
     QLabel *membersLabel;
     QScrollArea *scrollArea;
     QWidget *scrollContent;
     QVBoxLayout *membersLayout;
-
-    // Navigation bar
     QFrame *navigationFrame;
     QPushButton *homeButton;
     QPushButton *profileButton;
     QPushButton *groupsButton;
     QPushButton *notificationsButton;
+
+    // Methods
+    void setupUI();
+    void setupMemberList();
+    void setupNavigation();
+    void setupSearchFunctionality();
+    QFrame* createRoundedFrame();
+    void createMemberCard(const QString &name, const QString &id, int points, bool suspended, const QByteArray &profileImageData = QByteArray());
+    void toggleUserSuspension(const QString &userId, bool suspend);
 };
 
 #endif // ADMINMEMBER_H
