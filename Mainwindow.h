@@ -29,7 +29,18 @@ private slots:
     void showAdminNotiPage();
 
 private:
-    // All the pages
+    void initializeHomePage();
+    void initializeRegisterPage();
+    void initializeLoginPage();
+    void initializeAdminHomePage();
+    void initializeAdminMemberPage();
+    void initializeAdminClubPage();
+    void initializeAdminNotiPage();
+
+    // Cleanup method
+    void cleanupUnusedPages(QWidget* currentPage);
+
+    // Page pointers, initialized to nullptr
     HomePage* homePage;
     RegisterPage* registerPage;
     LoginPage* loginPage;
@@ -37,9 +48,6 @@ private:
     AdminMember* adminMember;
     AdminClub* adminClub;
     AdminNoti* adminNoti;
-
-    // Set up all signal-slot connections
-    void setupConnections();
 };
 
 #endif // MAINWINDOW_H
