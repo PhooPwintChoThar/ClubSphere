@@ -16,6 +16,7 @@ AdminMember::AdminMember(QWidget *parent) : QWidget(parent)
     setupUI();
     setupMemberList();
     setupNavigation();
+    setupSearchFunctionality(); // Added to connect search functionality
 }
 
 AdminMember::~AdminMember()
@@ -114,7 +115,7 @@ void AdminMember::setupMemberList()
 
     // Query users from the database with additional debugging
     QSqlQuery query;
-    query.prepare("SELECT user_id, name, points, suspended FROM users_list ORDER BY points DESC");
+    query.prepare("SELECT user_id, name, points, suspended, profile_photo FROM users_list ORDER BY points DESC");
 
     if (query.exec()) {
         int userCount = 0;
@@ -125,6 +126,7 @@ void AdminMember::setupMemberList()
             QString userName = query.value(1).toString();
             int points = query.value(2).toInt();
             bool suspended = query.value(3).toInt() == 1;
+            QByteArray profilePhoto = query.value(4).toByteArray();
 
             // Debug: Store user details
             debugUsers.append({userName, suspended});
@@ -134,7 +136,7 @@ void AdminMember::setupMemberList()
                 userName = "User " + QString::number(userId);
             }
 
-            createMemberCard(userName, QString::number(userId), points, suspended);
+            createMemberCard(userName, QString::number(userId), points, suspended, profilePhoto);
             userCount++;
         }
 
@@ -161,7 +163,7 @@ void AdminMember::setupMemberList()
 }
 
 
-void AdminMember::createMemberCard(const QString &name, const QString &id, int points, bool suspended)
+void AdminMember::createMemberCard(const QString &name, const QString &id, int points, bool suspended, const QByteArray &profileImageData)
 {
     QFrame *memberFrame = new QFrame(this);
     memberFrame->setFrameShape(QFrame::NoFrame);
@@ -171,22 +173,37 @@ void AdminMember::createMemberCard(const QString &name, const QString &id, int p
 
     // Profile image
     QLabel *profileImage = new QLabel(this);
-    QPixmap defaultAvatar(":/images/resources/default_avatar.png");
-    if (defaultAvatar.isNull()) {
-        // Create a placeholder if image is not found
-        defaultAvatar = QPixmap(60, 60);
-        defaultAvatar.fill(Qt::lightGray);
+    QPixmap userAvatar;
+
+    // Try to load the profile image from the database
+    if (!profileImageData.isEmpty()) {
+        if (userAvatar.loadFromData(profileImageData)) {
+            qDebug() << "Loaded profile image from database for user:" << id;
+        } else {
+            qDebug() << "Failed to load profile image from database for user:" << id;
+            userAvatar = QPixmap(":/images/resources/default_avatar.png");
+        }
     } else {
-        defaultAvatar = defaultAvatar.scaled(60, 60, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        qDebug() << "No profile image data for user:" << id;
+        userAvatar = QPixmap(":/images/resources/default_avatar.png");
     }
 
+    // If we still don't have a valid avatar, create a placeholder
+    if (userAvatar.isNull()) {
+        userAvatar = QPixmap(60, 60);
+        userAvatar.fill(Qt::lightGray);
+    }
+
+    // Resize the avatar to the correct size
+    userAvatar = userAvatar.scaled(60, 60, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
     // Make the avatar circular
-    QPixmap circularAvatar(defaultAvatar.size());
+    QPixmap circularAvatar(userAvatar.size());
     circularAvatar.fill(Qt::transparent);
 
     QPainter painter(&circularAvatar);
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.setBrush(QBrush(defaultAvatar));
+    painter.setBrush(QBrush(userAvatar));
     painter.setPen(Qt::NoPen);
     painter.drawEllipse(circularAvatar.rect());
 
@@ -268,18 +285,38 @@ void AdminMember::setupSearchFunctionality()
 
 void AdminMember::searchMembers(const QString &searchText)
 {
+    // Skip filtering if search text is empty
+    if (searchText.isEmpty()) {
+        // Show all members
+        for (int i = 0; i < membersLayout->count(); ++i) {
+            QLayoutItem* item = membersLayout->itemAt(i);
+            if (item && item->widget()) {
+                item->widget()->setVisible(true);
+            }
+        }
+        return;
+    }
+
     // Hide/show member cards based on search text
     for (int i = 0; i < membersLayout->count(); ++i) {
         QLayoutItem* item = membersLayout->itemAt(i);
         if (item && item->widget()) {
             QFrame* memberFrame = qobject_cast<QFrame*>(item->widget());
             if (memberFrame) {
-                // Find name label in the frame
+                // Find name label in the frame (typically the first QLabel with bold font)
+                bool visible = false;
                 QList<QLabel*> labels = memberFrame->findChildren<QLabel*>();
-                if (!labels.isEmpty()) {
-                    QString name = labels.first()->text();
-                    memberFrame->setVisible(name.contains(searchText, Qt::CaseInsensitive));
+
+                for (QLabel* label : labels) {
+                    QFont font = label->font();
+                    if (font.bold() && font.pointSize() > 12) {  // This should target the name label
+                        QString name = label->text();
+                        visible = name.contains(searchText, Qt::CaseInsensitive);
+                        break;
+                    }
                 }
+
+                memberFrame->setVisible(visible);
             }
         }
     }
