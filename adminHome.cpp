@@ -60,6 +60,20 @@ int AdminHome::getTotalUsersCount()
     }
 }
 
+int AdminHome::getTotalClubsCount()
+{   Database::initialize();
+    QSqlQuery query;
+    query.prepare("SELECT COUNT(*) FROM clubs_list");
+
+    if (query.exec() && query.next()) {
+        int totalClubs = query.value(0).toInt();
+        return totalClubs;
+    } else {
+        qDebug() << "Error fetching total clubs count:" << query.lastError().text();
+        return 0;
+    }
+}
+
 void AdminHome::setupStatsSection()
 {
     // Stats section with two cards
@@ -86,7 +100,8 @@ void AdminHome::setupStatsSection()
     totalClubsLabel = new QLabel("Total clubs", this);
     totalClubsLabel->setFont(statsLabelFont);
 
-    clubsCountLabel = new QLabel("100", this);  // This can also be queried from a clubs table if exists
+    int totalClubs=getTotalClubsCount();
+    clubsCountLabel = new QLabel(QString::number(totalClubs), this);  // This can also be queried from a clubs table if exists
     clubsCountLabel->setFont(countFont);
 
     clubsLayout->addWidget(totalClubsLabel);
