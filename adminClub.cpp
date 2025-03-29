@@ -3,6 +3,8 @@
 #include <QIcon>
 #include <QDebug>
 #include<QPainter>
+#include<QSqlQuery>
+#include <QSqlError>
 AdminClub::AdminClub(QWidget *parent) : QWidget(parent)
 {
     setupUI();
@@ -91,11 +93,8 @@ void AdminClub::setupUI()
 
 void AdminClub::setupClubList()
 {
-    // Add club cards
-    createClubCard("Music Club", 14, "John");
-    createClubCard("Music Club", 14, "John");
-    createClubCard("Music Club", 14, "John");
-    createClubCard("Music Club", 14, "John");
+    // Load clubs from database
+    refreshClubList();
 
     // Add spacer to push navigation bar to bottom
     mainLayout->addStretch();
@@ -251,7 +250,151 @@ void AdminClub::onNotificationsButtonClicked()
 void AdminClub::onAddClubClicked()
 {
     qDebug() << "Add club button clicked in AdminClub";
-    // Implement club addition functionality here
+
+    AddClubDialog dialog(this);
+    if (dialog.exec() == QDialog::Accepted) {
+        // Dialog was accepted, refresh club list
+        refreshClubList();
+    }
+}
+
+void AdminClub::refreshClubList()
+{
+    // Clear existing club cards
+    QLayoutItem *item;
+    while ((item = clubsLayout->takeAt(0)) != nullptr) {
+        if (item->widget()) {
+            delete item->widget();
+        }
+        delete item;
+    }
+
+    // Load all clubs from database
+    QVector<Club> clubs = Club::loadAllClubs();
+
+    // Add club cards
+    for (const Club& club : clubs) {
+        createClubCard(club);
+    }
+
+    // If no clubs, show a message
+    if (clubs.isEmpty()) {
+        QLabel *noClubsLabel = new QLabel("No clubs found. Click the + button to create one.", this);
+        noClubsLabel->setAlignment(Qt::AlignCenter);
+        clubsLayout->addWidget(noClubsLabel);
+    }
+}
+
+void AdminClub::createClubCard(const Club& club)
+{
+    QFrame *clubFrame = new QFrame(this);
+    clubFrame->setFrameShape(QFrame::NoFrame);
+    clubFrame->setContentsMargins(0, 0, 0, 0);
+
+    QHBoxLayout *cardLayout = new QHBoxLayout(clubFrame);
+    cardLayout->setContentsMargins(0, 8, 0, 8);  // Reduced vertical padding
+
+    // Club image
+    QLabel *clubImage = new QLabel(this);
+    QPixmap clubPhotoPixmap;
+
+    if (!club.getPhoto().isEmpty()) {
+        clubPhotoPixmap.loadFromData(club.getPhoto());
+    } else {
+        clubPhotoPixmap = QPixmap(":/images/resources/default_club.png");
+    }
+
+    if (clubPhotoPixmap.isNull()) {
+        // Create a placeholder if image is not found
+        clubPhotoPixmap = QPixmap(80, 80);
+        clubPhotoPixmap.fill(Qt::lightGray);
+
+        // Draw placeholder image icon
+        QPainter painter(&clubPhotoPixmap);
+        painter.setPen(Qt::darkGray);
+        painter.drawRect(20, 20, 50, 40);
+        painter.drawLine(20, 30, 40, 50);
+        painter.drawEllipse(50, 30, 10, 10);
+    }
+
+    clubImage->setPixmap(clubPhotoPixmap.scaled(80, 80, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    clubImage->setFixedSize(80, 80);
+    clubImage->setStyleSheet("background-color: #E0E0E0;");
+
+    // Club info
+    QVBoxLayout *infoLayout = new QVBoxLayout();
+    infoLayout->setSpacing(3);
+
+    QLabel *nameLabel = new QLabel(club.getName(), this);
+    nameLabel->setFont(QFont("Arial", 14, QFont::Bold));
+
+    QLabel *membersLabel = new QLabel(QString::number(club.getMemberCount()) + " members", this);
+    membersLabel->setFont(QFont("Arial", 11));
+
+    // Get leader name from database (assume for simplicity it's just the ID for now)
+    QLabel *leaderLabel = new QLabel("Leader ID: " + QString::number(club.getLeaderId()), this);
+    leaderLabel->setFont(QFont("Arial", 11));
+
+    infoLayout->addWidget(nameLabel);
+    infoLayout->addWidget(membersLabel);
+    infoLayout->addWidget(leaderLabel);
+
+    // Action buttons
+    QVBoxLayout *actionsLayout = new QVBoxLayout();
+    actionsLayout->setSpacing(8);
+
+    QPushButton *assignLeadersButton = new QPushButton("Assign Leaders", this);
+    assignLeadersButton->setStyleSheet("QPushButton { background-color: #D9E9D8; border-radius: 12px; padding: 6px 10px; }");
+
+    QPushButton *deleteButton = new QPushButton("Delete", this);
+    deleteButton->setStyleSheet("QPushButton { background-color: #E0E0E0; border-radius: 12px; padding: 6px 10px; color: #FF0000; }");
+
+    // Connect buttons
+    connect(assignLeadersButton, &QPushButton::clicked, [this, clubId = club.getId()]() {
+        qDebug() << "Assign leaders clicked for club ID:" << clubId;
+        // Implement leader assignment functionality
+    });
+
+    connect(deleteButton, &QPushButton::clicked, [this, clubId = club.getId(), clubName = club.getName()]() {
+        qDebug() << "Delete clicked for club ID:" << clubId;
+
+        // Ask for confirmation
+        QMessageBox::StandardButton reply = QMessageBox::question(this, "Confirm Delete",
+                                                                  QString("Are you sure you want to delete the club '%1'?").arg(clubName),
+                                                                  QMessageBox::Yes|QMessageBox::No);
+
+        if (reply == QMessageBox::Yes) {
+            // Delete club from database
+            QSqlQuery query;
+            query.prepare("DELETE FROM clubs_list WHERE club_id = :id");
+            query.bindValue(":id", clubId);
+
+            if (query.exec()) {
+                qDebug() << "Club deleted successfully";
+                refreshClubList();
+            } else {
+                qDebug() << "Error deleting club:" << query.lastError();
+                QMessageBox::critical(this, "Error", "Failed to delete club. Please try again.");
+            }
+        }
+    });
+
+    actionsLayout->addWidget(assignLeadersButton);
+    actionsLayout->addWidget(deleteButton);
+
+    cardLayout->addWidget(clubImage);
+    cardLayout->addLayout(infoLayout, 1);
+    cardLayout->addLayout(actionsLayout);
+
+    clubsLayout->addWidget(clubFrame);
+
+    // Add separator line except for the last item
+    QFrame *line = new QFrame(this);
+    line->setFrameShape(QFrame::HLine);
+    line->setFrameShadow(QFrame::Sunken);
+    line->setStyleSheet("background-color: #E0E0E0;");
+    line->setMaximumHeight(1);
+    clubsLayout->addWidget(line);
 }
 
 QFrame* AdminClub::createRoundedFrame()
