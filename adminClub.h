@@ -9,6 +9,8 @@
 #include <QScrollArea>
 #include <QFrame>
 #include <QLineEdit>
+#include "Club.h"
+#include "AddClubDialog.h"
 
 class AdminClub : public QWidget
 {
@@ -35,6 +37,8 @@ private:
     void setupClubList();
     void setupNavigation();
     void createClubCard(const QString &name, int members, const QString &leader);
+    void refreshClubList();
+    void createClubCard(const Club& club);
 
     QFrame* createRoundedFrame();
 
