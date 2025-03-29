@@ -2,14 +2,17 @@
 #include <QPixmap>
 #include <QIcon>
 #include <QDebug>
-#include<QPainter>
-#include<QSqlQuery>
+#include <QPainter>
+#include <QSqlQuery>
 #include <QSqlError>
+#include <QMessageBox>
+
 AdminClub::AdminClub(QWidget *parent) : QWidget(parent)
 {
     setupUI();
     setupClubList();
     setupNavigation();
+    setupSearchFunctionality();
 }
 
 AdminClub::~AdminClub()
@@ -100,7 +103,7 @@ void AdminClub::setupClubList()
     mainLayout->addStretch();
 }
 
-void AdminClub::createClubCard(const QString &name, int members, const QString &leader)
+void AdminClub::createClubCard(const QString &name, int clubId, int members, const QString &leader)
 {
     QFrame *clubFrame = new QFrame(this);
     clubFrame->setFrameShape(QFrame::NoFrame);
@@ -133,8 +136,10 @@ void AdminClub::createClubCard(const QString &name, int members, const QString &
     QVBoxLayout *infoLayout = new QVBoxLayout();
     infoLayout->setSpacing(3);  // Reduced spacing
 
-    QLabel *nameLabel = new QLabel(name, this);
-    nameLabel->setFont(QFont("Arial", 14, QFont::Bold));  // Smaller font
+    // Modified: Display club name with ID in larger, bold font
+    QString nameWithId = name + " (ID: " + QString::number(clubId) + ")";
+    QLabel *nameLabel = new QLabel(nameWithId, this);
+    nameLabel->setFont(QFont("Arial", 11, QFont::Bold));  // Increased font size and bold
 
     QLabel *membersLabel = new QLabel(QString::number(members) + " members", this);
     membersLabel->setFont(QFont("Arial", 11));  // Smaller font
@@ -325,8 +330,10 @@ void AdminClub::createClubCard(const Club& club)
     QVBoxLayout *infoLayout = new QVBoxLayout();
     infoLayout->setSpacing(3);
 
-    QLabel *nameLabel = new QLabel(club.getName(), this);
-    nameLabel->setFont(QFont("Arial", 14, QFont::Bold));
+    // Modified: Display club name with ID in larger, bold font
+    QString nameWithId = club.getName() + " (ID: " + QString::number(club.getId()) + ")";
+    QLabel *nameLabel = new QLabel(nameWithId, this);
+    nameLabel->setFont(QFont("Arial", 15, QFont::Bold));  // Increased font size and bold
 
     QLabel *membersLabel = new QLabel(QString::number(club.getMemberCount()) + " members", this);
     membersLabel->setFont(QFont("Arial", 11));
@@ -406,4 +413,49 @@ QFrame* AdminClub::createRoundedFrame()
     frame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
 
     return frame;
+}
+
+void AdminClub::setupSearchFunctionality()
+{
+    // Connect search edit to search slot
+    connect(searchEdit, &QLineEdit::textChanged, this, &AdminClub::searchClubs);
+}
+
+void AdminClub::searchClubs(const QString &searchText)
+{
+    // Skip filtering if search text is empty
+    if (searchText.isEmpty()) {
+        // Show all clubs
+        for (int i = 0; i < clubsLayout->count(); ++i) {
+            QLayoutItem* item = clubsLayout->itemAt(i);
+            if (item && item->widget()) {
+                item->widget()->setVisible(true);
+            }
+        }
+        return;
+    }
+
+    // Hide/show club cards based on search text
+    for (int i = 0; i < clubsLayout->count(); ++i) {
+        QLayoutItem* item = clubsLayout->itemAt(i);
+        if (item && item->widget()) {
+            QFrame* clubFrame = qobject_cast<QFrame*>(item->widget());
+            if (clubFrame) {
+                // Find name label in the frame (typically the first QLabel with bold font)
+                bool visible = false;
+                QList<QLabel*> labels = clubFrame->findChildren<QLabel*>();
+
+                for (QLabel* label : labels) {
+                    QFont font = label->font();
+                    if (font.bold() && font.pointSize() > 12) {  // This should target the club name label
+                        QString clubName = label->text();
+                        visible = clubName.contains(searchText, Qt::CaseInsensitive);
+                        break;
+                    }
+                }
+
+                clubFrame->setVisible(visible);
+            }
+        }
+    }
 }
