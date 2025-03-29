@@ -9,6 +9,7 @@
 #include <QScrollArea>
 #include <QFrame>
 #include <QLineEdit>
+#include <QFont>
 #include "Club.h"
 #include "AddClubDialog.h"
 
@@ -31,14 +32,16 @@ private slots:
     void onGroupsButtonClicked();
     void onNotificationsButtonClicked();
     void onAddClubClicked();
+    void searchClubs(const QString &searchText);
 
 private:
     void setupUI();
     void setupClubList();
     void setupNavigation();
-    void createClubCard(const QString &name, int members, const QString &leader);
+    void createClubCard(const QString &name, int clubId, int members, const QString &leader);
     void refreshClubList();
     void createClubCard(const Club& club);
+    void setupSearchFunctionality();
 
     QFrame* createRoundedFrame();
 
