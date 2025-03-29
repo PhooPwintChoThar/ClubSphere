@@ -29,6 +29,7 @@ private slots:
 
 private:
     int getTotalUsersCount();
+    int getTotalClubsCount();
     void setupUI();
     void setupStatsSection();
     void setupTopClubsSection();
