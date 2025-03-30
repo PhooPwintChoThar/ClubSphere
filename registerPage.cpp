@@ -142,7 +142,8 @@ RegisterPage::RegisterPage(QWidget *parent) : QWidget(parent)
     setLayout(mainLayout);
 }
 
-void RegisterPage::onRegisterButtonClicked(){
+
+void RegisterPage::onRegisterButtonClicked() {
     // Validate student ID
     QString studentIdStr = studentIdEdit->text();
     bool isValidId;
@@ -164,7 +165,7 @@ void RegisterPage::onRegisterButtonClicked(){
         userExists = (checkQuery.value(0).toInt() > 0);
     }
 
-    if (userExists){
+    if (userExists) {
         QMessageBox::information(this, "Registration Error", "This user id already exists!");
         return;
     }
@@ -192,7 +193,6 @@ void RegisterPage::onRegisterButtonClicked(){
     // Load default profile photo as byte array
     QByteArray profilePhotoData = Database::loadDefaultProfilePhoto();
 
-
     Database::initialize();
 
     // Prepare insert query with profile photo BLOB
@@ -217,14 +217,12 @@ void RegisterPage::onRegisterButtonClicked(){
         }
 
         QMessageBox::information(this, "Success", "Registered successfully!");
-        emit openadminHome();
+        emit openadminHome(studentId); // Pass the studentId to the signal
     } else {
         qDebug() << "Registration failed. Error:" << query.lastError().text();
         QMessageBox::critical(this, "Error", "Failed to register: " + query.lastError().text());
     }
-
 }
-
 
 void RegisterPage::goBackToHome()
 {
