@@ -50,12 +50,11 @@ HomePage::HomePage(QWidget *parent)
     QHBoxLayout *buttonLayout = new QHBoxLayout();
     buttonLayout->setSpacing(15);
 
-    QPushButton *loginButton = new QPushButton("Log In", this);
+    loginButton = new QPushButton("Log In", this);
+    registerButton = new QPushButton("Register", this);
     loginButton->setFixedSize(130, 40);  // Adjusted button size
     loginButton->setStyleSheet("background-color: black; color: white; border-radius: 8px; font-size: 14px;");
     buttonLayout->addWidget(loginButton);
-
-    QPushButton *registerButton = new QPushButton("Register", this);
     registerButton->setFixedSize(130, 40);  // Adjusted button size
     registerButton->setStyleSheet("background-color: white; color: black; border: 2px solid black; border-radius: 8px; font-size: 14px;");
     buttonLayout->addWidget(registerButton);
