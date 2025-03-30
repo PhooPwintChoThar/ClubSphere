@@ -17,8 +17,8 @@ public:
     explicit RegisterPage(QWidget *parent = nullptr);
 
 signals:
-    void navigateToHome(); // Signal to navigate back to home page
-    void openadminHome();
+    void navigateToHome();
+    void openadminHome(int userId);
 
 private slots:
     void onRegisterButtonClicked();
