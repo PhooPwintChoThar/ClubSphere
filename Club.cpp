@@ -31,12 +31,10 @@ bool Club::isMember(int userId) const {
 
 bool Club::saveToDatabase() const {
     QSqlQuery query;
-
     // Check if club already exists
     bool isUpdate = false;
     query.prepare("SELECT COUNT(*) FROM clubs_list WHERE club_id = :id");
     query.bindValue(":id", clubId);
-
     if (query.exec() && query.next()) {
         isUpdate = query.value(0).toInt() > 0;
     } else {
@@ -44,9 +42,17 @@ bool Club::saveToDatabase() const {
         return false;
     }
 
+    // Start a transaction
+    QSqlDatabase db = QSqlDatabase::database();
+    if (!db.transaction()) {
+        qDebug() << "Error starting transaction:" << db.lastError().text();
+        return false;
+    }
+
     // Convert members to serialized string
     QString serializedMembers = Database::serializeUserIds(members);
 
+    // Update or insert club record
     if (isUpdate) {
         // Update existing club
         query.prepare("UPDATE clubs_list SET club_name = :name, club_photo = :photo, "
@@ -66,6 +72,29 @@ bool Club::saveToDatabase() const {
 
     if (!query.exec()) {
         qDebug() << "Error saving club to database:" << query.lastError().text();
+        db.rollback();
+        return false;
+    }
+
+    // Add entry to clubleaders_list table if leader_id is valid
+    if (leaderId > 0) {
+        // Insert entry into clubleaders_list
+        QSqlQuery leaderQuery;
+        leaderQuery.prepare("INSERT OR REPLACE INTO clubleaders_list (leader_id, assigned_club_id) VALUES (:leaderId, :clubId)");
+        leaderQuery.bindValue(":leaderId", leaderId);
+        leaderQuery.bindValue(":clubId", clubId);
+
+        if (!leaderQuery.exec()) {
+            qDebug() << "Error adding leader relationship:" << leaderQuery.lastError().text();
+            db.rollback();
+            return false;
+        }
+    }
+
+    // Commit the transaction
+    if (!db.commit()) {
+        qDebug() << "Error committing transaction:" << db.lastError().text();
+        db.rollback();
         return false;
     }
 
