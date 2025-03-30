@@ -18,6 +18,10 @@ SOURCES += \
     adminMember.cpp \
     adminNoti.cpp \
     homePage.cpp \
+    lboardAll.cpp \
+    lgroupchat.cpp \
+    lhomepage.cpp \
+    lnoti.cpp \
     loginPage.cpp \
     main.cpp \
     registerPage.cpp
@@ -33,6 +37,10 @@ HEADERS += \
     adminNoti.h \
     database.h \
     homePage.h \
+    lboardAll.h \
+    lgroupchat.h \
+    lhomepage.h \
+    lnoti.h \
     loginPage.h \
     registerPage.h
 
