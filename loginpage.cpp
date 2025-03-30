@@ -110,29 +110,26 @@ LoginPage::LoginPage(QWidget *parent) : QWidget(parent)
 }
 
 // Keeping the rest of the methods unchanged
-void LoginPage::onLoginButtonClicked(){
-
-    int userId=userIdField->text().toInt();
+void LoginPage::onLoginButtonClicked() {
+    int userId = userIdField->text().toInt();
     QSqlQuery query;
     query.prepare("SELECT COUNT(*) FROM users_list WHERE user_id = :id");
     query.bindValue(":id", userId);
 
-    //Check user exists
+    // Check user exists
     bool userExists = false;
     if (query.exec() && query.next()) {
         if (query.value(0).toInt() > 0)
-            userExists=true; // Returns true if the user already exists
+            userExists = true; // Returns true if the user already exists
     }
 
-    if(!userExists){
-
+    if (!userExists) {
         QMessageBox::warning(this, " Error", "User ID does not exist!");
         return;
-
     }
 
-    int password=passwordField->text().toInt();
-    int retrievedPassword=-1;
+    int password = passwordField->text().toInt();
+    int retrievedPassword = -1;
     query.prepare("SELECT password FROM users_list WHERE user_id = :id" );
     query.bindValue(":id", userId);
 
@@ -148,17 +145,13 @@ void LoginPage::onLoginButtonClicked(){
         return;
     }
 
-
-    if (password==retrievedPassword){
+    if (password == retrievedPassword) {
         QMessageBox::information(this, "Success", "Logged in successfully!");
-        emit openadminHome();
-    } else{
-        QMessageBox::critical(this, "Error", "Invalid Password!" );
+        emit openadminHome(userId); // Pass the userId to the signal
+    } else {
+        QMessageBox::critical(this, "Error", "Invalid Password!");
     }
-
-
 }
-
 
 void LoginPage::goBackToHome()
 {
