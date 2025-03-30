@@ -20,6 +20,7 @@ public slots:
 
 private:
     QPushButton *registerButton;
+    QPushButton *loginButton;
 };
 
 #endif // HOMEPAGE_H
