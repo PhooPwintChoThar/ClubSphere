@@ -109,12 +109,12 @@ void MainWindow::initializeAdminNotiPage()
     }
 }
 
-// Initialize leader pages
+
 void MainWindow::initializeLeaderHomePage()
 {
     if (!leaderHomePage) {
         qDebug() << "Initializing Leader Home Page";
-        leaderHomePage = new LHomepage();
+        leaderHomePage = new LHomepage(currentUserId); // Pass the currentUserId as leaderId
         // Connect signals
         connect(leaderHomePage, &LHomepage::showGroupChat, this, &MainWindow::showLeaderGroupChat);
         connect(leaderHomePage, &LHomepage::showNotifications, this, &MainWindow::showLeaderNotifications);
@@ -124,9 +124,23 @@ void MainWindow::initializeLeaderHomePage()
 
 void MainWindow::initializeLeaderGroupChat()
 {
+    // Find the club associated with this leader
+    QSqlQuery query;
+    query.prepare("SELECT club_id, club_name FROM clubs_list WHERE leader_id = :currentUserId");
+    query.bindValue(":currentUserId", currentUserId);
+    int clubId;
+
+    if (query.exec() && query.next()) {
+        clubId = query.value(0).toInt();
+
+    } else {
+        qDebug() << "Error finding club for leader:" << query.lastError().text();
+        clubId= -1;
+
+    }
     if (!leaderGroupChat) {
         qDebug() << "Initializing Leader Group Chat";
-        leaderGroupChat = new LGroupChat();
+        leaderGroupChat = new LGroupChat(clubId, currentUserId);
         // Connect signals
         connect(leaderGroupChat, &LGroupChat::navigateToHomePage, this, &MainWindow::showLeaderHomePage);
     }
