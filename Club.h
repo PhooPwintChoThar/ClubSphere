@@ -32,6 +32,10 @@ public:
 
     // Save to database
     bool saveToDatabase() const;
+    QVector<int> getEventIds() const { return eventIds; }
+    void setEventIds(const QVector<int>& ids) { eventIds = ids; }
+    void addEventId(int eventId);
+    void removeEventId(int eventId);
 
     // Create from database
     static Club loadFromDatabase(int clubId);
@@ -42,6 +46,7 @@ private:
     QString clubName;
     QByteArray clubPhoto;
     QVector<int> members;
+    QVector<int> eventIds;
     int leaderId;
 };
 
