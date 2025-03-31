@@ -51,17 +51,18 @@ bool Club::saveToDatabase() const {
 
     // Convert members to serialized string
     QString serializedMembers = Database::serializeUserIds(members);
+    QString serializedEventIds = Database::serializeUserIds(eventIds);
 
     // Update or insert club record
     if (isUpdate) {
         // Update existing club
         query.prepare("UPDATE clubs_list SET club_name = :name, club_photo = :photo, "
-                      "club_members = :members, leader_id = :leaderId "
+                      "club_members = :members, leader_id = :leaderId, event_ids = :eventIds "
                       "WHERE club_id = :id");
     } else {
         // Insert new club
-        query.prepare("INSERT INTO clubs_list (club_id, club_name, club_photo, club_members, leader_id) "
-                      "VALUES (:id, :name, :photo, :members, :leaderId)");
+        query.prepare("INSERT INTO clubs_list (club_id, club_name, club_photo, club_members, leader_id, event_ids) "
+                      "VALUES (:id, :name, :photo, :members, :leaderId, :eventIds)");
     }
 
     query.bindValue(":id", clubId);
@@ -69,6 +70,7 @@ bool Club::saveToDatabase() const {
     query.bindValue(":photo", clubPhoto);
     query.bindValue(":members", serializedMembers);
     query.bindValue(":leaderId", leaderId);
+    query.bindValue(":eventIds", serializedEventIds);
 
     if (!query.exec()) {
         qDebug() << "Error saving club to database:" << query.lastError().text();
@@ -104,7 +106,7 @@ bool Club::saveToDatabase() const {
 Club Club::loadFromDatabase(int clubId) {
     Club club;
     QSqlQuery query;
-    query.prepare("SELECT club_id, club_name, club_photo, club_members, leader_id "
+    query.prepare("SELECT club_id, club_name, club_photo, club_members, leader_id, event_ids "
                   "FROM clubs_list WHERE club_id = :id");
     query.bindValue(":id", clubId);
 
@@ -114,6 +116,7 @@ Club Club::loadFromDatabase(int clubId) {
         club.setPhoto(query.value(2).toByteArray());
         club.setMembers(Database::deserializeUserIds(query.value(3).toString()));
         club.setLeaderId(query.value(4).toInt());
+        club.setEventIds(Database::deserializeUserIds(query.value(5).toString()));
     } else {
         qDebug() << "Error loading club from database:" << query.lastError().text();
     }
@@ -123,7 +126,7 @@ Club Club::loadFromDatabase(int clubId) {
 
 QVector<Club> Club::loadAllClubs() {
     QVector<Club> clubs;
-    QSqlQuery query("SELECT club_id, club_name, club_photo, club_members, leader_id FROM clubs_list");
+    QSqlQuery query("SELECT club_id, club_name, club_photo, club_members, leader_id, event_ids FROM clubs_list");
 
     while (query.next()) {
         Club club;
@@ -132,8 +135,20 @@ QVector<Club> Club::loadAllClubs() {
         club.setPhoto(query.value(2).toByteArray());
         club.setMembers(Database::deserializeUserIds(query.value(3).toString()));
         club.setLeaderId(query.value(4).toInt());
+        club.setEventIds(Database::deserializeUserIds(query.value(5).toString()));
         clubs.append(club);
     }
 
     return clubs;
+}
+
+
+void Club::addEventId(int eventId) {
+    if (!eventIds.contains(eventId)) {
+        eventIds.append(eventId);
+    }
+}
+
+void Club::removeEventId(int eventId) {
+    eventIds.removeAll(eventId);
 }
