@@ -11,8 +11,10 @@ CONFIG += c++17
 SOURCES += \
     AddClubDialog.cpp \
     Club.cpp \
+    Event.cpp \
     Mainwindow.cpp \
     Navigation.cpp \
+    User.cpp \
     adminClub.cpp \
     adminHome.cpp \
     adminMember.cpp \
@@ -29,8 +31,10 @@ SOURCES += \
 HEADERS += \
     AddClubDialog.h \
     Club.h \
+    Event.h \
     Mainwindow.h \
     Navigation.h \
+    User.h \
     adminClub.h \
     adminHome.h \
     adminMember.h \
