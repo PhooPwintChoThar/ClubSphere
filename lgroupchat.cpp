@@ -1,11 +1,14 @@
 // lgroupchat.cpp
 #include "lgroupchat.h"
+#include "database.h"  // Add database include
 #include <QPainter>
 #include <QDebug>
 #include <QScrollBar>
 #include <QFont>
 #include <QFontMetrics>
 #include <QTimer>
+#include <QSqlQuery>  // Add SQL query include
+#include <QSqlError>  // Add SQL error include
 
 BubbleMessage::BubbleMessage(const QString &text, const QString &sender, const QDateTime &time, MessageType type, QWidget *parent)
     : QWidget(parent), messageType(type)
@@ -102,19 +105,27 @@ QPixmap BubbleMessage::createAvatar(const QString &letter, const QString &color)
     return pixmap;
 }
 
-LGroupChat::LGroupChat(QWidget *parent) : QWidget(parent)
+LGroupChat::LGroupChat(int clubId, int currentUserId, QWidget *parent) : QWidget(parent), m_clubId(clubId), m_currentUserId(currentUserId)
 {
-    // Initialize participants and avatars
-    participants = {"John", "Alice", "Amina"};
+    // Get club name from database
+    QSqlQuery query;
+    query.prepare("SELECT club_name FROM clubs_list WHERE club_id = :clubId");
+    query.bindValue(":clubId", clubId);
+
+    if (query.exec() && query.next()) {
+        m_clubName = query.value(0).toString();
+    } else {
+        m_clubName = "Club Chat";
+        qDebug() << "Error getting club name:" << query.lastError().text();
+    }
+
+    // Initialize avatars colors
     avatarColors = {
-        {"John", "#c5e1a5"},
-        {"Alice", "#ffcc80"},
-        {"Amina", "#90caf9"},
         {"You", "#b39ddb"}
     };
 
     setupUI();
-    loadInitialMessages();
+    loadMessagesFromDatabase();
 }
 
 LGroupChat::~LGroupChat()
@@ -154,8 +165,8 @@ void LGroupChat::setupUI()
     setLayout(mainLayout);
 
     // Set fixed width to match mobile viewport like in the old version
-    setFixedWidth(375);
-    setMinimumHeight(800);
+    setFixedWidth(350);
+    setMinimumHeight(650);
     setStyleSheet("background-color: white;");
 }
 
@@ -169,7 +180,7 @@ void LGroupChat::setupHeader()
 
     // Back button - modified to use resource PNG
     backButton = new QPushButton("", this);
-    backButton->setIcon(QIcon(":/resources/back.png")); // Use resource PNG
+    backButton->setIcon(QIcon(":/images/resources/back.png")); // Use resource PNG
     backButton->setIconSize(QSize(20, 20));
     backButton->setFlat(true);
     backButton->setStyleSheet("QPushButton { border: none; }");
@@ -180,11 +191,28 @@ void LGroupChat::setupHeader()
     groupAvatarLabel->setFixedSize(40, 40);
     groupAvatarLabel->setStyleSheet("background-color: #E0E0E0; border-radius: 20px;");
 
+    // Load club photo if available
+    QSqlQuery photoQuery;
+    photoQuery.prepare("SELECT club_photo FROM clubs_list WHERE club_id = :clubId");
+    photoQuery.bindValue(":clubId", m_clubId);
+
+    if (photoQuery.exec() && photoQuery.next()) {
+        QByteArray photoData = photoQuery.value(0).toByteArray();
+        if (!photoData.isEmpty()) {
+            QPixmap pixmap;
+            if (pixmap.loadFromData(photoData)) {
+                // Create circular club avatar
+                QPixmap clubAvatar = createAvatar(m_clubName.left(1), "#E0E0E0");
+                groupAvatarLabel->setPixmap(clubAvatar);
+            }
+        }
+    }
+
     // Group info (name and status)
     QVBoxLayout *groupInfoLayout = new QVBoxLayout();
     groupInfoLayout->setSpacing(0);
 
-    groupNameLabel = new QLabel("KMITL science club", this);
+    groupNameLabel = new QLabel(m_clubName, this);  // Use actual club name
     QFont titleFont = groupNameLabel->font();
     titleFont.setPointSize(14);
     titleFont.setBold(true);
@@ -275,16 +303,54 @@ void LGroupChat::setupInputArea()
     mainLayout->addWidget(inputWidget);
 }
 
-void LGroupChat::loadInitialMessages()
+void LGroupChat::loadMessagesFromDatabase()
 {
-    // Add messages shown in the screenshot - exactly as in the old version
-    addMessage("Hey! How's it going? I was wondering what time are we going to leave for today club meeting?", "John", false);
-    addMessage("Honestly I don't think I'll be able to make it :( Something came up at my end. I'm really sorry!", "You", true);
-    addMessage("Oh, okay. How about others?", "John", false);
-    addMessage("Maybe around 6:30pm?", "Alice", false);
-    addMessage("Talked to Amina and she's going and says 8 pm is better", "You", true);
-    addMessage("Okay great! Going to miss you. Could you send us her number?", "Alice", false);
-    addMessage("Yeah sure!", "You", true);
+    // Clear any existing messages
+    while (messagesLayout->count() > 0) {
+        QLayoutItem* item = messagesLayout->takeAt(0);
+        if (item->widget()) {
+            delete item->widget();
+        }
+        delete item;
+    }
+
+    // Add stretch back
+    messagesLayout->addStretch();
+
+    // Query to get messages for this club
+    QSqlQuery query;
+    query.prepare("SELECT message_content, sender_id, timestamp FROM messages_list "
+                  "WHERE club_id = :clubId "
+                  "ORDER BY timestamp ASC");
+    query.bindValue(":clubId", m_clubId);
+
+    if (!query.exec()) {
+        qDebug() << "Error loading messages:" << query.lastError().text();
+        // Add fallback message if database query fails
+        addMessage("Failed to load messages from database", "System", false);
+        return;
+    }
+
+    bool hasMessages = false;
+
+    while (query.next()) {
+        hasMessages = true;
+
+        QString content = query.value(0).toString();
+        int senderId = query.value(1).toInt();
+        QDateTime timestamp = QDateTime::fromSecsSinceEpoch(query.value(2).toLongLong());
+
+        bool isCurrentUser = (senderId == m_currentUserId);
+        QString senderName = isCurrentUser ? "You" : Database::getUserNameById(senderId);
+
+        // Add message with appropriate sender and timestamp
+        addMessage(content, senderName, isCurrentUser, timestamp);
+    }
+
+    // Add a welcome message if no messages exist
+    if (!hasMessages) {
+        addMessage("Welcome to the club chat! Messages sent here will be visible to all club members.", "System", false);
+    }
 
     // Scroll to bottom to show the latest messages
     QTimer::singleShot(100, [this]() {
@@ -298,14 +364,21 @@ void LGroupChat::sendMessage()
 {
     QString text = messageInput->text().trimmed();
     if (!text.isEmpty()) {
-        addMessage(text, "You", true);
-        messageInput->clear();
+        // Save message to database
+        if (Database::saveMessage(m_clubId, text, m_currentUserId)) {
+            // Add message to UI
+            addMessage(text, "You", true);
+            messageInput->clear();
+        } else {
+            // Show error in chat if message couldn't be saved
+            addMessage("Failed to send message. Please try again.", "System", false);
+        }
     }
 }
 
-void LGroupChat::addMessage(const QString &text, const QString &sender, bool isOutgoing)
+void LGroupChat::addMessage(const QString &text, const QString &sender, bool isOutgoing, const QDateTime &timestamp)
 {
-    // Remove the stretch if it exists (just like in the old implementation)
+    // Remove the stretch if it exists
     if (messagesLayout->count() > 0) {
         QLayoutItem* item = messagesLayout->itemAt(messagesLayout->count() - 1);
         if (item->spacerItem()) {
@@ -317,7 +390,7 @@ void LGroupChat::addMessage(const QString &text, const QString &sender, bool isO
     BubbleMessage *messageBubble = new BubbleMessage(
         text,
         isOutgoing ? "" : sender,  // Don't show "You" label for outgoing messages
-        QDateTime::currentDateTime(),
+        timestamp,
         isOutgoing ? BubbleMessage::Outgoing : BubbleMessage::Incoming,
         this
         );
