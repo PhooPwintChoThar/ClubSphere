@@ -3,41 +3,40 @@
 #define LGROUPCHAT_H
 
 #include <QWidget>
-#include <QPushButton>
 #include <QLabel>
-#include <QLineEdit>
-#include <QScrollArea>
+#include <QPushButton>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include <QPixmap>
+#include <QScrollArea>
+#include <QLineEdit>
 #include <QDateTime>
-#include <QMap>
-#include <QTimer>
 
+// Message bubble for chat
 class BubbleMessage : public QWidget
 {
     Q_OBJECT
+
 public:
     enum MessageType { Incoming, Outgoing };
 
     BubbleMessage(const QString &text, const QString &sender, const QDateTime &time, MessageType type, QWidget *parent = nullptr);
+    QPixmap createAvatar(const QString &letter, const QString &color);
 
 private:
     QLabel *messageLabel;
     QLabel *timeLabel;
     QLabel *senderLabel;
     MessageType messageType;
-
-    QPixmap createAvatar(const QString &letter, const QString &color);
 };
 
+// Main chat window class
 class LGroupChat : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit LGroupChat(QWidget *parent = nullptr);
-    ~LGroupChat() override;
+    explicit LGroupChat(int clubId, int currentUserId, QWidget *parent = nullptr);
+    ~LGroupChat();
     void prepareForDestruction();
 
 signals:
@@ -45,37 +44,39 @@ signals:
 
 private slots:
     void sendMessage();
-    void addMessage(const QString &text, const QString &sender, bool isOutgoing);
     void goBack();
 
 private:
-    // UI Components
-    QWidget *headerWidget;
-    QLabel *groupNameLabel;
-    QLabel *statusLabel;
-    QPushButton *backButton;
-    QLabel *groupAvatarLabel;
+    void setupUI();
+    void setupHeader();
+    void setupMessagesArea();
+    void setupInputArea();
+    void loadMessagesFromDatabase();
+    void addMessage(const QString &text, const QString &sender, bool isOutgoing, const QDateTime &timestamp = QDateTime::currentDateTime());
+    QPixmap createAvatar(const QString &name, const QString &color);
 
+    QVBoxLayout *mainLayout;
     QScrollArea *scrollArea;
     QWidget *scrollContent;
     QVBoxLayout *messagesLayout;
+
+    QWidget *headerWidget;
+    QLabel *groupAvatarLabel;
+    QLabel *groupNameLabel;
+    QLabel *statusLabel;
+    QPushButton *backButton;
 
     QWidget *inputWidget;
     QLineEdit *messageInput;
     QPushButton *sendButton;
 
-    QVBoxLayout *mainLayout;
-
-    // Data
-    QMap<QString, QString> avatarColors;
     QStringList participants;
+    QMap<QString, QString> avatarColors;
 
-    void setupUI();
-    void setupHeader();
-    void setupMessagesArea();
-    void setupInputArea();
-    void loadInitialMessages();
-    QPixmap createAvatar(const QString &name, const QString &color);
+    // New variables for database integration
+    int m_clubId;
+    int m_currentUserId;
+    QString m_clubName;
 };
 
 #endif // LGROUPCHAT_H
