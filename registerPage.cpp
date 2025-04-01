@@ -193,9 +193,12 @@ void RegisterPage::onRegisterButtonClicked() {
     // Load default profile photo as byte array
     QByteArray profilePhotoData = Database::loadDefaultProfilePhoto();
 
+    // Get student name from se_names_list if available
+    QString studentName = Database::getStudentNameById(studentId);
+
     Database::initialize();
 
-    // Prepare insert query with profile photo BLOB
+    // Prepare insert query with profile photo BLOB and name from se_names_list if available
     QSqlQuery query;
     query.prepare("INSERT INTO users_list (user_id, password, points, profile_photo, suspended, name) VALUES (?, ?, ?, ?, ?, ?)");
     query.addBindValue(studentId);
@@ -203,10 +206,17 @@ void RegisterPage::onRegisterButtonClicked() {
     query.addBindValue(point);
     query.addBindValue(profilePhotoData);
     query.addBindValue(0);  // Explicitly set suspended to 0 (false)
-    query.addBindValue("");  // Empty name initially
+    query.addBindValue(studentName);  // Set name from se_names_list (will be empty if not found)
 
     if (query.exec()) {
         qDebug() << "User registered successfully!";
+
+        // Log whether name was found in se_names_list
+        if (studentName.isEmpty()) {
+            qDebug() << "No pre-defined name found for student ID" << studentId;
+        } else {
+            qDebug() << "Used pre-defined name for student ID" << studentId << ":" << studentName;
+        }
 
         // Verify user count after registration
         QSqlQuery countQuery;
