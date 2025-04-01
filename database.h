@@ -272,6 +272,92 @@ public:
         return QString("Unknown User");
     }
 
+    static bool initializeStudentNames() {
+        QSqlQuery query;
+
+        // Create the se_names_list table if it doesn't exist
+        if (!query.exec("CREATE TABLE IF NOT EXISTS se_names_list("
+                        "student_id INTEGER PRIMARY KEY NOT NULL,"
+                        "name TEXT NOT NULL"
+                        ");")) {
+            qDebug() << "Error creating se_names_list table:" << query.lastError();
+            return false;
+        }
+
+        // Sample data - replace with your actual student data
+        QVector<QPair<int, QString>> studentData = {
+                                                    {67011073, "Adisorn Numpradit"}, {67011078, "Bhawat Kolkitchaiwan"},
+                                                    {67011091, "Chananyu Chinnawuth"}, {67011093, "Chavit Saritdeechakul"}, {67011096, "Chayut Panangkasiri"}, {67011100, "Chirawad Koollachote"}, {67011110, "Ekboonya Srisook"},
+                                                    {67011115, "Hsu Myat Shwe Sin"}, {67011117, "Khanin Chuanchaisit"}, {67011152, "Koses Suvarnasuddhi"}, {67011153, "Kyi Thant Sin"}, {67011177, "Napatrawee Chieowwitt"},
+                                                    {67011112, "Nuttamon Ketkaeo"}, {67011236, "Pannawhiz Pipatmunkong"}, {67011258, "Paphavee Yanmook"}, {67011273, "Payut Kapasuwan"}, {67011287, "Ramida Laphashopkin"},
+                                                    {67011297, "Sarun Rattanapan"}, {67011300, "Singhayapol Kliengma"}, {67011302, "Sirapot Satarntraipope"}, {67011318, "Supichaya Ratanaopas"}, {67011322, "Suwitchaya Chintawan"},
+                                                    {67011335, "Thanaphat Chongkananu"}, {67011352, "Theepakorn Phayonrat"}, {67011362, "Theepakon Khwanna"}, {67011372, "Thunthanut Teemaethaw"}, {67011371, "Virithpol Thara"},
+                                                    {67011596, "Han Ni Aung"}, {67011614, "Korapat Tripatarasit"}, {67011615, "La Min Maung"}, {67011619, "May Nyein Chan"}, {67011627, "Nopparath Nonraksanuk"}, {67011629, "Norrapat Nimdit"},
+                                                    {67011638, "Pasu"}, {67011653, "Phone Myat Pyae Sone"}, {67011659, "Saw Zi Dunn"}, {67011685, "Bhanuwat Swadsidsri"}, {67011725, "San Aung"}, {67011731, "Thiri Thaw"},
+                                                    {67011755, "Phoo Pwint Cho Thar"},  {66010599, "Arhway Larhuna"}, {66010968, "Bowornthat Chiangthong"}, {66010998, "Cusson Laohapatanawong"},
+                                                    {66010991, "Diyaan Pulikkal"}, {66011008, "Jirawatt Chimanee"}, {66011014, "Kant Isaranuchheep"}, {66011036, "Kongfah Sangchaisirisak"}, {66011702, "Naphat Umpa"}, {66011800, "Natavee Pecharat"},
+                                                    {66011801, "Natchapon Sukthep"}, {66011805, "Nay Chi Shunn Lei"}, {66011807, "Nutthhapat Chaloemlarpsombut"}, {66011107, "Panchaya Wejchapinant"}, {66011131, "Pannatat Sribusarakkham"},
+                                                    {66011174, "Pannawat Yorkhant"}, {66011123, "Parin Vessakosol"}, {66011147, "Phatdanai Khemanukul"}, {66011148, "Phathompol Siripichaiprom"},
+                                                    {66011149, "Phatthadon Sornplang"}, {66011167, "Piraya Noorit"}, {66011177, "Rachata Phondi"}, {66011193, "Rachatawan Sudjarid"}, {66011203, "Sai Marn Pha"},
+                                                    {66011211, "Sarita Manopatana"}, {66011215, "Satikit Tapbumrong"}, {66011217, "Shisa Klaysuban"}, {66011231, "Sorasich Lertwerasirikul"}, {66011244, "Syril Tuladhar"},
+                                                    {66011245, "Tada Siangchin"}, {66011249, "Tanakrit Doltanakarn"}, {66011276, "Thunyaphon Chumkasian"}, {66011277, "Thuwanon Siddhichai"}, {66011288, "Vichaya Roongsiripornphol"},
+                                                    {66011301, "Xanin Sae Ma"}, {66011525, "Audthanee Supeeramongkolkul"}, {66011533, "Eaint Kay Khaing Kyaw"}, {66011534, "Ei Myat Nwe"}, {66011564, "Panisara Yimcharoen"},
+                                                    {66011580, "Phurirat Punmerod"}, {66011582, "Pongchanan Sriwanna"}, {66011606, "Thura Aung"}
+        };
+
+        // Begin transaction for faster insertion of multiple rows
+        QSqlDatabase::database().transaction();
+
+        bool success = true;
+
+        // For each student in our sample data
+        for (const auto &student : studentData) {
+            // First check if this student ID already exists
+            query.prepare("SELECT COUNT(*) FROM se_names_list WHERE student_id = :id");
+            query.bindValue(":id", student.first);
+
+            if (query.exec() && query.next() && query.value(0).toInt() == 0) {
+                // Student ID doesn't exist, so insert it
+                query.prepare("INSERT INTO se_names_list (student_id, name) VALUES (:id, :name)");
+                query.bindValue(":id", student.first);
+                query.bindValue(":name", student.second);
+
+                if (!query.exec()) {
+                    qDebug() << "Error inserting student data:" << query.lastError();
+                    success = false;
+                    break;
+                }
+            } else {
+                // Student ID already exists, log it but continue with others
+                qDebug() << "Student ID" << student.first << "already exists, skipping";
+            }
+        }
+
+        if (success) {
+            QSqlDatabase::database().commit();
+            qDebug() << "Successfully populated se_names_list with initial data";
+        } else {
+            QSqlDatabase::database().rollback();
+            qDebug() << "Failed to populate se_names_list, transaction rolled back";
+        }
+
+        return success;
+    }
+
+
+    // Add this method to fetch a student name from se_names_list
+    static QString getStudentNameById(int studentId) {
+        QSqlQuery query;
+        query.prepare("SELECT name FROM se_names_list WHERE student_id = :id");
+        query.bindValue(":id", studentId);
+
+        if (query.exec() && query.next()) {
+            return query.value(0).toString();
+        }
+
+        return QString(); // Return empty string if name not found
+    }
+
 };
 
 
