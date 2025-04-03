@@ -5,13 +5,15 @@
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent),
     homePage(nullptr), registerPage(nullptr), loginPage(nullptr),
-    adminHome(nullptr), adminMember(nullptr), adminClub(nullptr), adminNoti(nullptr),
+    adminHome(nullptr), adminMember(nullptr), adminClub(nullptr),
     leaderHomePage(nullptr), leaderGroupChat(nullptr), leaderNotifications(nullptr), leaderboardPage(nullptr),
-    currentUserId(0)
+    memberHomePage(nullptr), memberClubPage(nullptr), memberGoingPage(nullptr),
+    memberProfilePage(nullptr), memberBoardPage(nullptr), memberEventPage(nullptr), memberChatPage(nullptr),
+    searchClubsPage(nullptr),currentUserId(0)
 {
     // Set initial window properties
     this->setWindowTitle("Club Management System");
-    this->resize(375, 800);
+    this->setFixedSize(350, 650);
 
     // Initialize only the home page on startup
     initializeHomePage();
@@ -27,11 +29,18 @@ MainWindow::~MainWindow()
     if (adminHome) delete adminHome;
     if (adminMember) delete adminMember;
     if (adminClub) delete adminClub;
-    if (adminNoti) delete adminNoti;
     if (leaderHomePage) delete leaderHomePage;
     if (leaderGroupChat) delete leaderGroupChat;
     if (leaderNotifications) delete leaderNotifications;
     if (leaderboardPage) delete leaderboardPage;
+    if (memberHomePage) delete memberHomePage;
+    if (memberClubPage) delete memberClubPage;
+    if (memberGoingPage) delete memberGoingPage;
+    if (memberProfilePage) delete memberProfilePage;
+    if (memberBoardPage) delete memberBoardPage;
+    if (memberEventPage) delete memberEventPage;
+    if (memberChatPage) delete memberChatPage;
+    if (searchClubsPage) delete searchClubsPage;
 }
 
 // Initialize admin pages
@@ -72,7 +81,7 @@ void MainWindow::initializeAdminHomePage()
         // Connect AdminHome signals
         connect(adminHome, &AdminHome::navigateToMembers, this, &MainWindow::showAdminMemberPage);
         connect(adminHome, &AdminHome::navigateToClubs, this, &MainWindow::showAdminClubPage);
-        connect(adminHome, &AdminHome::navigateToNotifications, this, &MainWindow::showAdminNotiPage);
+
     }
 }
 
@@ -83,7 +92,7 @@ void MainWindow::initializeAdminMemberPage()
         // Connect AdminMember signals
         connect(adminMember, &AdminMember::navigateToHome, this, &MainWindow::showAdminHomePage);
         connect(adminMember, &AdminMember::navigateToClubs, this, &MainWindow::showAdminClubPage);
-        connect(adminMember, &AdminMember::navigateToNotifications, this, &MainWindow::showAdminNotiPage);
+
     }
 }
 
@@ -94,18 +103,7 @@ void MainWindow::initializeAdminClubPage()
         // Connect AdminClub signals
         connect(adminClub, &AdminClub::navigateToHome, this, &MainWindow::showAdminHomePage);
         connect(adminClub, &AdminClub::navigateToMembers, this, &MainWindow::showAdminMemberPage);
-        connect(adminClub, &AdminClub::navigateToNotifications, this, &MainWindow::showAdminNotiPage);
-    }
-}
 
-void MainWindow::initializeAdminNotiPage()
-{
-    if (!adminNoti) {
-        adminNoti = new AdminNoti();
-        // Connect AdminNoti signals
-        connect(adminNoti, &AdminNoti::navigateToHome, this, &MainWindow::showAdminHomePage);
-        connect(adminNoti, &AdminNoti::navigateToMembers, this, &MainWindow::showAdminMemberPage);
-        connect(adminNoti, &AdminNoti::navigateToClubs, this, &MainWindow::showAdminClubPage);
     }
 }
 
@@ -132,12 +130,11 @@ void MainWindow::initializeLeaderGroupChat()
 
     if (query.exec() && query.next()) {
         clubId = query.value(0).toInt();
-
     } else {
         qDebug() << "Error finding club for leader:" << query.lastError().text();
-        clubId= -1;
-
+        clubId = -1;
     }
+
     if (!leaderGroupChat) {
         qDebug() << "Initializing Leader Group Chat";
         leaderGroupChat = new LGroupChat(clubId, currentUserId);
@@ -148,9 +145,20 @@ void MainWindow::initializeLeaderGroupChat()
 
 void MainWindow::initializeLeaderNotifications()
 {
+    QSqlQuery query;
+    query.prepare("SELECT club_id, club_name FROM clubs_list WHERE leader_id = :currentUserId");
+    query.bindValue(":currentUserId", currentUserId);
+    int clubId;
+
+    if (query.exec() && query.next()) {
+        clubId = query.value(0).toInt();
+    } else {
+        qDebug() << "Error finding club for leader:" << query.lastError().text();
+        clubId = -1;
+    }
     if (!leaderNotifications) {
         qDebug() << "Initializing Leader Notifications Page";
-        leaderNotifications = new LNoti();
+        leaderNotifications = new LNoti(clubId);
         // Connect signals
         connect(leaderNotifications, &LNoti::navigateBack, this, &MainWindow::showLeaderHomePage);
     }
@@ -166,7 +174,114 @@ void MainWindow::initializeLeaderboardPage()
     }
 }
 
-// Navigation methods for admin pages
+// Initialize new member pages
+void MainWindow::initializeMemberHomePage()
+{
+    if (!memberHomePage) {
+        memberHomePage = new MHomepage(currentUserId);
+        // Connect navigation signals
+        connect(memberHomePage, &MHomepage::navigateToHome, this, &MainWindow::showMemberHomePage);
+        connect(memberHomePage, &MHomepage::navigateToClub, this, &MainWindow::showMemberClubPage);
+        connect(memberHomePage, &MHomepage::navigateToGoing, this, &MainWindow::showMemberGoingPage);
+        connect(memberHomePage, &MHomepage::navigateToProfile, this, &MainWindow::showMemberProfilePage);
+        connect(memberHomePage, &MHomepage::navigateToBoard, this, &MainWindow::showMemberBoardPage);
+        connect(memberHomePage, &MHomepage::navigateToSearchClubs, this, &MainWindow::showSearchClubsPage);
+    }
+}
+
+void MainWindow::initializeMemberClubPage()
+{
+    if (!memberClubPage) {
+        qDebug() << "Initializing Member Club Page";
+        memberClubPage = new MClubPage(currentUserId);
+        // Connect navigation signals
+        connect(memberClubPage, &MClubPage::navigateToHome, this, &MainWindow::showMemberHomePage);
+        connect(memberClubPage, &MClubPage::navigateToClub, this, &MainWindow::showMemberClubPage);
+        connect(memberClubPage, &MClubPage::navigateToGoing, this, &MainWindow::showMemberGoingPage);
+        connect(memberClubPage, &MClubPage::navigateToProfile, this, &MainWindow::showMemberProfilePage);
+        connect(memberClubPage, &MClubPage::navigateToEvent, this, &MainWindow::showMemberEventPage);
+        connect(memberClubPage, &MClubPage::navigateToChat, this, &MainWindow::showMemberChatPage);
+    }
+}
+
+void MainWindow::initializeMemberGoingPage()
+{
+    if (!memberGoingPage) {
+        qDebug() << "Initializing Member Going Page";
+        memberGoingPage = new MGoingPage();
+        // Connect navigation signals
+        connect(memberGoingPage, &MGoingPage::navigateToHome, this, &MainWindow::showMemberHomePage);
+        connect(memberGoingPage, &MGoingPage::navigateToClub, this, &MainWindow::showMemberClubPage);
+        connect(memberGoingPage, &MGoingPage::navigateToGoing, this, &MainWindow::showMemberGoingPage);
+        connect(memberGoingPage, &MGoingPage::navigateToProfile, this, &MainWindow::showMemberProfilePage);
+    }
+}
+
+void MainWindow::initializeMemberProfilePage()
+{
+    if (!memberProfilePage) {
+        qDebug() << "Initializing Member Profile Page";
+        memberProfilePage = new MProfilePage();
+        // Connect navigation signals
+        connect(memberProfilePage, &MProfilePage::navigateToHome, this, &MainWindow::showMemberHomePage);
+        connect(memberProfilePage, &MProfilePage::navigateToClub, this, &MainWindow::showMemberClubPage);
+        connect(memberProfilePage, &MProfilePage::navigateToGoing, this, &MainWindow::showMemberGoingPage);
+        connect(memberProfilePage, &MProfilePage::navigateToProfile, this, &MainWindow::showMemberProfilePage);
+    }
+}
+
+void MainWindow::initializeMemberBoardPage()
+{
+    if (!memberBoardPage) {
+        qDebug() << "Initializing Member Board Page";
+        memberBoardPage = new MBoardPage();
+        // Connect navigation signals
+        connect(memberBoardPage, &MBoardPage::navigateToHome, this, &MainWindow::showMemberHomePage);
+        connect(memberBoardPage, &MBoardPage::navigateToClub, this, &MainWindow::showMemberClubPage);
+        connect(memberBoardPage, &MBoardPage::navigateToGoing, this, &MainWindow::showMemberGoingPage);
+        connect(memberBoardPage, &MBoardPage::navigateToProfile, this, &MainWindow::showMemberProfilePage);
+        connect(memberBoardPage, &MBoardPage::navigateToBoard, this, &MainWindow::showMemberBoardPage);
+    }
+}
+
+void MainWindow::initializeMemberEventPage(int clubId)
+
+{
+    if (!memberEventPage) {
+        qDebug() << "Initializing Member Event Page";
+        memberEventPage = new MEventPage(currentUserId , clubId );
+        // Connect navigation signals
+        connect(memberEventPage, &MEventPage::navigateToHome, this, &MainWindow::showMemberHomePage);
+        connect(memberEventPage, &MEventPage::navigateToClub, this, &MainWindow::showMemberClubPage);
+        connect(memberEventPage, &MEventPage::navigateToGoing, this, &MainWindow::showMemberGoingPage);
+        connect(memberEventPage, &MEventPage::navigateToProfile, this, &MainWindow::showMemberProfilePage);
+    }
+}
+
+void MainWindow::initializeMemberChatPage(int clubId)
+{
+    if (!memberChatPage) {
+        qDebug() << "Initializing Member Chat Page";
+        memberChatPage = new MChatPage(clubId, currentUserId);
+        // Connect signals
+        connect(memberChatPage, &MChatPage::navigateToClub, this, &MainWindow::showMemberClubPage);
+    }
+}
+
+void MainWindow::initializeSearchClubsPage()
+{
+    if (!searchClubsPage) {
+        qDebug() << "Initializing Search Clubs Page";
+        searchClubsPage = new SearchClubs(currentUserId);
+        // Connect navigation signals
+        connect(searchClubsPage, &SearchClubs::navigateToHome, this, &MainWindow::showMemberHomePage);
+
+    }
+}
+
+
+
+// Navigation methods for home/auth pages
 void MainWindow::showHomePage()
 {
     qDebug() << "Showing Home Page";
@@ -194,6 +309,7 @@ void MainWindow::showLoginPage()
     cleanupUnusedPages(loginPage);
 }
 
+// Navigation methods for admin pages
 void MainWindow::showAdminHomePage()
 {
     qDebug() << "Showing Admin Home Page";
@@ -225,17 +341,6 @@ void MainWindow::showAdminClubPage()
     adminClub->activateWindow();
     // Clean up unused pages
     cleanupUnusedPages(adminClub);
-}
-
-void MainWindow::showAdminNotiPage()
-{
-    qDebug() << "Showing Admin Notification Page";
-    initializeAdminNotiPage();
-    adminNoti->show();
-    adminNoti->raise();
-    adminNoti->activateWindow();
-    // Clean up unused pages
-    cleanupUnusedPages(adminNoti);
 }
 
 // Navigation methods for leader pages
@@ -283,18 +388,101 @@ void MainWindow::showLeaderboard()
     cleanupUnusedPages(leaderboardPage);
 }
 
+// Navigation methods for member pages
+void MainWindow::showMemberHomePage()
+{
+    qDebug() << "Showing Member Home Page";
+    initializeMemberHomePage();
+    memberHomePage->show();
+    memberHomePage->raise();
+    memberHomePage->activateWindow();
+    // Clean up unused pages
+    cleanupUnusedPages(memberHomePage);
+}
+
+void MainWindow::showMemberClubPage()
+{
+    qDebug() << "Showing Member Club Page";
+    initializeMemberClubPage();
+    memberClubPage->show();
+    memberClubPage->raise();
+    memberClubPage->activateWindow();
+    // Clean up unused pages
+    cleanupUnusedPages(memberClubPage);
+}
+
+void MainWindow::showMemberGoingPage()
+{
+    qDebug() << "Showing Member Going Page";
+    initializeMemberGoingPage();
+    memberGoingPage->show();
+    memberGoingPage->raise();
+    memberGoingPage->activateWindow();
+    // Clean up unused pages
+    cleanupUnusedPages(memberGoingPage);
+}
+
+void MainWindow::showMemberProfilePage()
+{
+    qDebug() << "Showing Member Profile Page";
+    initializeMemberProfilePage();
+    memberProfilePage->show();
+    memberProfilePage->raise();
+    memberProfilePage->activateWindow();
+    // Clean up unused pages
+    cleanupUnusedPages(memberProfilePage);
+}
+
+void MainWindow::showMemberBoardPage()
+{
+    qDebug() << "Showing Member Board Page";
+    initializeMemberBoardPage();
+    memberBoardPage->show();
+    memberBoardPage->raise();
+    memberBoardPage->activateWindow();
+    // Clean up unused pages
+    cleanupUnusedPages(memberBoardPage);
+}
+
+void MainWindow::showMemberEventPage(int clubId)
+{
+    qDebug() << "Showing Member Event Page";
+    initializeMemberEventPage(clubId);
+    memberEventPage->show();
+    memberEventPage->raise();
+    memberEventPage->activateWindow();
+    // Clean up unused pages
+    cleanupUnusedPages(memberEventPage);
+}
+
+void MainWindow::showMemberChatPage(int clubId)
+{
+    qDebug() << "Showing Member Chat Page";
+    initializeMemberChatPage(clubId);
+    memberChatPage->show();
+    memberChatPage->raise();
+    memberChatPage->activateWindow();
+    // Clean up unused pages
+    cleanupUnusedPages(memberChatPage);
+}
+
 // Authentication handlers
 void MainWindow::handleRegisterSuccess(int userId)
 {
     qDebug() << "Registration successful for user ID:" << userId;
     currentUserId = userId;
 
-    if (isUserLeader(userId)) {
+    // Special admin ID check
+    if (userId == 67001922) {
+        qDebug() << "User is admin, navigating to admin home page";
+        showAdminHomePage();
+    }
+    else if (isUserLeader(userId)) {
         qDebug() << "User is a leader, navigating to leader home page";
         showLeaderHomePage();
     } else {
-        qDebug() << "User is not a leader, navigating to admin home page";
-        showAdminHomePage();
+        qDebug() << "User is a regular member, navigating to member home page";
+        showMemberHomePage();
     }
 }
 
@@ -303,12 +491,17 @@ void MainWindow::handleLoginSuccess(int userId)
     qDebug() << "Login successful for user ID:" << userId;
     currentUserId = userId;
 
-    if (isUserLeader(userId)) {
+    // Special admin ID check
+    if (userId == 67001922) {
+        qDebug() << "User is admin, navigating to admin home page";
+        showAdminHomePage();
+    }
+    else if (isUserLeader(userId)) {
         qDebug() << "User is a leader, navigating to leader home page";
         showLeaderHomePage();
     } else {
-        qDebug() << "User is not a leader, navigating to admin home page";
-        showAdminHomePage();
+        qDebug() << "User is a regular member, navigating to member home page";
+        showMemberHomePage();
     }
 }
 
@@ -327,10 +520,23 @@ bool MainWindow::isUserLeader(int userId)
     return false;
 }
 
+
+void MainWindow::showSearchClubsPage()
+{
+    qDebug() << "Showing Search Clubs Page";
+    initializeSearchClubsPage();
+    searchClubsPage->show();
+    searchClubsPage->raise();
+    searchClubsPage->activateWindow();
+    // Clean up unused pages
+    cleanupUnusedPages(searchClubsPage);
+}
+
 // Function to destroy unused pages to free memory
 void MainWindow::cleanupUnusedPages(QWidget* currentPage)
 {
     // Don't destroy the current page
+    // Original pages
     if (homePage && homePage != currentPage) {
         delete homePage;
         homePage = nullptr;
@@ -367,11 +573,6 @@ void MainWindow::cleanupUnusedPages(QWidget* currentPage)
         qDebug() << "Admin club page destroyed";
     }
 
-    if (adminNoti && adminNoti != currentPage) {
-        delete adminNoti;
-        adminNoti = nullptr;
-        qDebug() << "Admin notification page destroyed";
-    }
 
     if (leaderHomePage && leaderHomePage != currentPage) {
         delete leaderHomePage;
@@ -396,4 +597,54 @@ void MainWindow::cleanupUnusedPages(QWidget* currentPage)
         leaderboardPage = nullptr;
         qDebug() << "Leaderboard page destroyed";
     }
+
+    // Member pages
+    if (memberHomePage && memberHomePage != currentPage) {
+        delete memberHomePage;
+        memberHomePage = nullptr;
+        qDebug() << "Member home page destroyed";
+    }
+
+    if (memberClubPage && memberClubPage != currentPage) {
+        delete memberClubPage;
+        memberClubPage = nullptr;
+        qDebug() << "Member club page destroyed";
+    }
+
+    if (memberGoingPage && memberGoingPage != currentPage) {
+        delete memberGoingPage;
+        memberGoingPage = nullptr;
+        qDebug() << "Member going page destroyed";
+    }
+
+    if (memberProfilePage && memberProfilePage != currentPage) {
+        delete memberProfilePage;
+        memberProfilePage = nullptr;
+        qDebug() << "Member profile page destroyed";
+    }
+
+    if (memberBoardPage && memberBoardPage != currentPage) {
+        delete memberBoardPage;
+        memberBoardPage = nullptr;
+        qDebug() << "Member board page destroyed";
+    }
+
+    if (memberEventPage && memberEventPage != currentPage) {
+        delete memberEventPage;
+        memberEventPage = nullptr;
+        qDebug() << "Member event page destroyed";
+    }
+
+    if (memberChatPage && memberChatPage != currentPage) {
+        delete memberChatPage;
+        memberChatPage = nullptr;
+        qDebug() << "Member chat page destroyed";
+    }
+
+    if (searchClubsPage && searchClubsPage != currentPage) {
+        delete searchClubsPage;
+        searchClubsPage = nullptr;
+        qDebug() << "Search clubs page destroyed";
+    }
+
 }
