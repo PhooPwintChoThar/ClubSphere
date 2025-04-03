@@ -55,7 +55,7 @@ public:
             QByteArray defaultProfilePhoto = loadDefaultProfilePhoto();
 
             query.prepare("INSERT INTO users_list (user_id, password, points, profile_photo, name) "
-                          "VALUES (67001922, 123456, 0, :profile_photo, 'Admin')");
+                          "VALUES (67001922, 111111, 0, :profile_photo, 'Admin')");
             query.bindValue(":profile_photo", defaultProfilePhoto);
 
             if (!query.exec()) {
@@ -318,7 +318,7 @@ public:
         QVector<QPair<int, QString>> studentData = {
                                                     {67011073, "Adisorn Numpradit"}, {67011078, "Bhawat Kolkitchaiwan"},
                                                     {67011091, "Chananyu Chinnawuth"}, {67011093, "Chavit Saritdeechakul"}, {67011096, "Chayut Panangkasiri"}, {67011100, "Chirawad Koollachote"}, {67011110, "Ekboonya Srisook"},
-                                                    {67011118, "Hsu Myat Shwe Sin"}, {67011117, "Khanin Chuanchaisit"}, {67011152, "Koses Suvarnasuddhi"}, {67011153, "Kyi Thant Sin"}, {67011177, "Napatrawee Chieowwitt"},
+                                                    {67011118, "Hsu Myat Shwe Sin"}, {67011117, "Khanin Chuanchaisit"}, {67011152, "Koses Suvarnasuddhi"}, {67011158, "Kyi Thant Sin"}, {67011177, "Napatrawee Chieowwitt"},
                                                     {67011112, "Nuttamon Ketkaeo"}, {67011236, "Pannawhiz Pipatmunkong"}, {67011258, "Paphavee Yanmook"}, {67011273, "Payut Kapasuwan"}, {67011287, "Ramida Laphashopkin"},
                                                     {67011297, "Sarun Rattanapan"}, {67011300, "Singhayapol Kliengma"}, {67011302, "Sirapot Satarntraipope"}, {67011318, "Supichaya Ratanaopas"}, {67011322, "Suwitchaya Chintawan"},
                                                     {67011335, "Thanaphat Chongkananu"}, {67011352, "Theepakorn Phayonrat"}, {67011362, "Theepakon Khwanna"}, {67011372, "Thunthanut Teemaethaw"}, {67011371, "Virithpol Thara"},
