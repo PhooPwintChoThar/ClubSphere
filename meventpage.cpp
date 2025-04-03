@@ -257,28 +257,17 @@ void MEventPage::setupUI()
     QHBoxLayout* headerLayout = new QHBoxLayout(headerWidget);
     headerLayout->setContentsMargins(12, 4, 12, 4);
 
-    // Create back button with image instead of text
+    // Create back button with image
     QPushButton* backBtn = new QPushButton();
-
-    // Load back arrow icon from resources
     QIcon backIcon(":/images/resources/back.png");
-
-    // Check if icon loaded successfully
     if (backIcon.isNull()) {
-        // Fallback to a secondary path
         backIcon = QIcon(":/icons/navigation/back");
-
-        // If still null, create a warning in console
         if (backIcon.isNull()) {
             qWarning("Back button icon not found in resources!");
         }
     }
-
-    // Set the icon to the button
     backBtn->setIcon(backIcon);
     backBtn->setIconSize(QSize(18, 18));
-
-    // Style the button to be circular
     backBtn->setStyleSheet("QPushButton {"
                            "background-color: #f0f0f0;"
                            "border: none;"
@@ -308,9 +297,9 @@ void MEventPage::setupUI()
     QHBoxLayout* titleLayout = new QHBoxLayout(titleWidget);
     titleLayout->setContentsMargins(12, 4, 12, 4);
 
-    m_titleLabel = new QLabel("Science Club's announcement");
+    m_titleLabel = new QLabel("Club Events");
     QFont eventsFont;
-    eventsFont.setPointSize(18);
+    eventsFont.setPointSize(16);
     eventsFont.setBold(true);
     m_titleLabel->setFont(eventsFont);
 
@@ -330,16 +319,71 @@ void MEventPage::setupUI()
     m_scrollArea->setFrameShape(QFrame::NoFrame);
     m_scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    m_scrollArea->setStyleSheet("background-color: white;");
+    m_scrollArea->setStyleSheet("background-color: #f0f0f0;"); // Match MHomepage style
 
     m_scrollContent = new QWidget();
-    m_scrollContent->setStyleSheet("background-color: white;");
+    m_scrollContent->setStyleSheet("background-color: #f0f0f0;"); // Match MHomepage style
 
     m_eventsLayout = new QVBoxLayout(m_scrollContent);
     m_eventsLayout->setContentsMargins(10, 10, 10, 10);
-    m_eventsLayout->setSpacing(10);
+    m_eventsLayout->setSpacing(15); // Match MHomepage spacing
 
     m_scrollArea->setWidget(m_scrollContent);
+
+    // Bottom navigation bar (similar to MHomepage)
+    QWidget* bottomNavBar = new QWidget();
+    bottomNavBar->setFixedHeight(60);
+    bottomNavBar->setStyleSheet("background-color: white; border-top: 1px solid #e0e0e0;");
+
+    QHBoxLayout* bottomNavLayout = new QHBoxLayout(bottomNavBar);
+    bottomNavLayout->setContentsMargins(10, 5, 10, 5);
+    bottomNavLayout->setSpacing(0);
+
+    // Create navigation buttons
+    // Home icon
+    QPushButton* homeIcon = new QPushButton();
+    homeIcon->setIcon(QIcon(":/images/resources/home_logo.png"));
+    homeIcon->setIconSize(QSize(24, 24));
+    homeIcon->setFixedSize(40, 40);
+    homeIcon->setStyleSheet("QPushButton { background-color: transparent; border: none; }");
+
+    // Club icon
+    QPushButton* clubIcon = new QPushButton();
+    clubIcon->setIcon(QIcon(":/images/resources/club_logo.png"));
+    clubIcon->setIconSize(QSize(24, 24));
+    clubIcon->setFixedSize(40, 40);
+    clubIcon->setStyleSheet("QPushButton { background-color: transparent; border: none; }");
+
+    // Event icon
+    QPushButton* eventIcon = new QPushButton();
+    eventIcon->setIcon(QIcon(":/images/resources/event.png"));
+    eventIcon->setIconSize(QSize(24, 24));
+    eventIcon->setFixedSize(40, 40);
+    eventIcon->setStyleSheet("QPushButton { background-color: transparent; border: none; }");
+
+    // Profile icon
+    QPushButton* profileIcon = new QPushButton();
+    profileIcon->setIcon(QIcon(":/images/resources/user.png"));
+    profileIcon->setIconSize(QSize(24, 24));
+    profileIcon->setFixedSize(40, 40);
+    profileIcon->setStyleSheet("QPushButton { background-color: transparent; border: none; }");
+
+    // Add navigation buttons to layout
+    bottomNavLayout->addStretch(1);
+    bottomNavLayout->addWidget(homeIcon);
+    bottomNavLayout->addStretch(1);
+    bottomNavLayout->addWidget(clubIcon);
+    bottomNavLayout->addStretch(1);
+    bottomNavLayout->addWidget(eventIcon);
+    bottomNavLayout->addStretch(1);
+    bottomNavLayout->addWidget(profileIcon);
+    bottomNavLayout->addStretch(1);
+
+    // Connect navigation buttons
+    connect(homeIcon, &QPushButton::clicked, this, &MEventPage::navigateToHome);
+    connect(clubIcon, &QPushButton::clicked, this, &MEventPage::navigateToClub);
+    connect(eventIcon, &QPushButton::clicked, this, &MEventPage::navigateToClub); // Could be a dedicated event page
+    connect(profileIcon, &QPushButton::clicked, this, &MEventPage::navigateToClub); // Profile page
 
     // Connect back button signal
     connect(backBtn, &QPushButton::clicked, this, &MEventPage::navigateToClub);
@@ -349,14 +393,15 @@ void MEventPage::setupUI()
     m_mainLayout->addWidget(titleWidget);
     m_mainLayout->addWidget(line);
     m_mainLayout->addWidget(m_scrollArea, 1);
+    m_mainLayout->addWidget(bottomNavBar);
 
     // Set fixed width to match window size
     setFixedWidth(350);
+    setFixedHeight(650);
 
     // Set background color
     setStyleSheet("background-color: white;");
 }
-
 
 void MEventPage::loadClubEvents()
 {
@@ -369,14 +414,6 @@ void MEventPage::loadClubEvents()
         delete item;
     }
 
-    // Load events for this club from the database
-    QSqlQuery query;
-    query.prepare("SELECT event_id, event_content, event_photo, created_timestamp, event_going_count "
-                  "FROM events_list "
-                  "WHERE club_id = :clubId "
-                  "ORDER BY created_timestamp DESC");
-    query.bindValue(":clubId", m_clubId);
-
     // Get club name for the title
     QSqlQuery clubQuery;
     clubQuery.prepare("SELECT club_name FROM clubs_list WHERE club_id = :clubId");
@@ -384,12 +421,32 @@ void MEventPage::loadClubEvents()
 
     if (clubQuery.exec() && clubQuery.next()) {
         QString clubName = clubQuery.value(0).toString();
-        m_titleLabel->setText(clubName + "'s events");
+        m_titleLabel->setText(clubName + "'s Events");
+    }
+
+    // Load events for this club from the database
+    QSqlQuery query;
+    query.prepare("SELECT e.event_id, e.event_content, e.event_photo, e.created_timestamp, "
+                  "e.event_going_count, c.club_name "
+                  "FROM events_list e "
+                  "JOIN clubs_list c ON e.club_id = c.club_id "
+                  "WHERE e.club_id = :clubId "
+                  "ORDER BY e.created_timestamp DESC");
+    query.bindValue(":clubId", m_clubId);
+
+    // Get user's going events
+    QVector<int> goingEvents;
+    QSqlQuery userQuery;
+    userQuery.prepare("SELECT going_events FROM users_list WHERE user_id = :userId");
+    userQuery.bindValue(":userId", user_id);
+
+    if (userQuery.exec() && userQuery.next()) {
+        QString goingEventsStr = userQuery.value(0).toString();
+        goingEvents = Database::deserializeUserIds(goingEventsStr);
     }
 
     if (query.exec()) {
         bool hasEvents = false;
-        int userId = user_id; // Assume this method exists or add it
 
         while (query.next()) {
             hasEvents = true;
@@ -399,42 +456,22 @@ void MEventPage::loadClubEvents()
             QByteArray imageData = query.value(2).toByteArray();
             QDateTime timestamp = QDateTime::fromSecsSinceEpoch(query.value(3).toLongLong());
             int goingCount = query.value(4).toInt();
-
-            // Check if user is already going to this event
-            bool isAlreadyGoing = false;
-            QSqlQuery userQuery;
-            userQuery.prepare("SELECT going_events FROM users_list WHERE user_id = :userId");
-            userQuery.bindValue(":userId", userId);
-
-            if (userQuery.exec() && userQuery.next()) {
-                QString goingEvents = userQuery.value(0).toString();
-                QVector<int> goingEventsVector = Database::deserializeUserIds(goingEvents);
-                isAlreadyGoing = goingEventsVector.contains(eventId);
-            }
-
-            // Get club name for this event
-            QSqlQuery clubNameQuery;
-            clubNameQuery.prepare("SELECT club_name FROM clubs_list WHERE club_id = :clubId");
-            clubNameQuery.bindValue(":clubId", m_clubId);
-            QString clubName = "Unknown Club";
-
-            if (clubNameQuery.exec() && clubNameQuery.next()) {
-                clubName = clubNameQuery.value(0).toString();
-            }
+            QString clubName = query.value(5).toString();
+            bool isAlreadyGoing = goingEvents.contains(eventId);
 
             // Add separator except for the first event
             if (m_eventsLayout->count() > 0) {
                 QFrame* line = new QFrame();
                 line->setFrameShape(QFrame::HLine);
-                line->setFrameShadow(QFrame::Plain);
+                line->setFrameShadow(QFrame::Sunken);
+                line->setStyleSheet("background-color: #d0d0d0;");
                 line->setFixedHeight(1);
-                line->setStyleSheet("background-color: #e0e0e0;");
                 m_eventsLayout->addWidget(line);
             }
 
             // Create MEventCard with the loaded data
             MEventCard* card = new MEventCard(eventId, clubName, timestamp, content,
-                                              imageData, goingCount, userId, isAlreadyGoing, this);
+                                              imageData, goingCount, user_id, isAlreadyGoing, this);
             m_eventsLayout->addWidget(card);
         }
 
@@ -446,6 +483,9 @@ void MEventPage::loadClubEvents()
         }
     } else {
         qDebug() << "Error loading events:" << query.lastError().text();
+        QLabel* errorLabel = new QLabel("Error loading events: " + query.lastError().text(), this);
+        errorLabel->setAlignment(Qt::AlignCenter);
+        errorLabel->setStyleSheet("font-size: 14px; color: #ff0000; margin: 20px;");
+        m_eventsLayout->addWidget(errorLabel);
     }
 }
-
