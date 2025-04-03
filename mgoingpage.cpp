@@ -1,22 +1,124 @@
 // mgoingpage.cpp
 #include "mgoingpage.h"
+#include "database.h" // Include for database functions
 #include <QIcon>
 #include <QFont>
 #include <QDebug>
 #include <QFrame>
 #include <QScrollArea>
+#include <QSqlError>
 
-MGoingPage::MGoingPage(QWidget *parent)
-    : QWidget(parent)
+MGoingPage::MGoingPage(int userID, QWidget *parent)
+    : QWidget(parent), m_currentUserId(userID)
 {
     qDebug() << "MGoingPage constructor called";
     setupUI();
     qDebug() << "MGoingPage UI setup completed";
+    loadUserEvents();
 }
 
 MGoingPage::~MGoingPage()
 {
     qDebug() << "MGoingPage destructor called";
+}
+
+
+void MGoingPage::loadUserEvents()
+{
+
+    // Add this to loadUserEvents() at the beginning
+    QSqlQuery debugQuery;
+    debugQuery.exec("SELECT user_id, going_events FROM users_list WHERE user_id = " + QString::number(m_currentUserId));
+    if (debugQuery.next()) {
+        qDebug() << "User ID:" << debugQuery.value(0).toInt();
+        qDebug() << "Raw going_events value:" << debugQuery.value(1).toString();
+    }
+
+
+    if (m_currentUserId <= 0) {
+        qDebug() << "Invalid user ID, cannot load events";
+        return;
+    }
+
+    clearEvents();
+
+    // First get the user's going events
+    QSqlQuery userQuery;
+    userQuery.prepare("SELECT going_events FROM users_list WHERE user_id = :userId");
+    userQuery.bindValue(":userId", m_currentUserId);
+
+    if (!userQuery.exec() || !userQuery.next()) {
+        qDebug() << "Failed to query user's going events:" << userQuery.lastError().text();
+        return;
+    }
+
+    QString goingEventsStr = userQuery.value(0).toString();
+    QVector<int> goingEvents = Database::deserializeUserIds(goingEventsStr);
+
+
+    // In loadUserEvents(), after getting goingEventsStr
+    qDebug() << "Going events string:" << goingEventsStr;
+    qDebug() << "Deserialized events count:" << goingEvents.size();
+    qDebug() << "Deserialized events:" << goingEvents;
+
+
+
+    if (goingEvents.isEmpty()) {
+        // Add a label indicating no events
+        QLabel* noEventsLabel = new QLabel("You have no upcoming events");
+        noEventsLabel->setAlignment(Qt::AlignCenter);
+        QFont font = noEventsLabel->font();
+        font.setPointSize(12);
+        noEventsLabel->setFont(font);
+        m_contentLayout->addWidget(noEventsLabel);
+        return;
+    }
+
+    // Create a SQL query to get event details
+    QString placeholders;
+    for (int i = 0; i < goingEvents.size(); ++i) {
+        if (i > 0) placeholders += ",";
+        placeholders += QString::number(goingEvents[i]);
+    }
+
+    QSqlQuery eventQuery;
+    QString queryStr = QString("SELECT event_id, club_id, event_content, event_photo, event_code, created_timestamp "
+                               "FROM events_list "
+                               "WHERE event_id IN (%1) "
+                               "ORDER BY created_timestamp ASC").arg(placeholders);
+
+    if (!eventQuery.exec(queryStr)) {
+        qDebug() << "Failed to query events:" << eventQuery.lastError().text();
+        return;
+    }
+
+    bool firstEvent = true;
+
+    while (eventQuery.next()) {
+        int eventId = eventQuery.value(0).toInt();
+        int clubId = eventQuery.value(1).toInt();
+        QString eventContent = eventQuery.value(2).toString();
+        QByteArray eventPhoto = eventQuery.value(3).toByteArray();
+        QString eventCode = eventQuery.value(4).toString();
+        int timestamp = eventQuery.value(5).toInt();
+
+        // Convert timestamp to QDateTime
+        QDateTime eventDate = QDateTime::fromSecsSinceEpoch(timestamp);
+
+        // Get club name
+        QString clubName = getClubNameById(clubId);
+
+        // Add separator before each event except the first one
+        if (!firstEvent) {
+            m_contentLayout->addWidget(createSeparator());
+        } else {
+            firstEvent = false;
+        }
+
+        // Create and add event widget
+        QWidget* eventWidget = createClubEventItem(eventId, clubName, eventContent, eventPhoto, eventCode, eventDate);
+        m_contentLayout->addWidget(eventWidget);
+    }
 }
 
 void MGoingPage::setupUI()
@@ -34,7 +136,7 @@ void MGoingPage::setupUI()
     QHBoxLayout* headerLayout = new QHBoxLayout(headerWidget);
     headerLayout->setContentsMargins(12, 4, 12, 4);
 
-    m_titleLabel = new QLabel("Clubsphere");
+    m_titleLabel = new QLabel("My Events");
     QFont titleFont;
     titleFont.setPointSize(16);
     titleFont.setBold(true);
@@ -52,10 +154,10 @@ void MGoingPage::setupUI()
     scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     scrollArea->setStyleSheet("background-color: #d8e8cd;");
 
-    QWidget* contentWidget = new QWidget();
-    QVBoxLayout* contentLayout = new QVBoxLayout(contentWidget);
-    contentLayout->setContentsMargins(20, 20, 20, 20);
-    contentLayout->setSpacing(15);
+    m_contentWidget = new QWidget();
+    m_contentLayout = new QVBoxLayout(m_contentWidget);
+    m_contentLayout->setContentsMargins(20, 20, 20, 20);
+    m_contentLayout->setSpacing(15);
 
     // Title label for upcoming events
     QLabel* upcomingLabel = new QLabel("Upcoming Events for you");
@@ -64,23 +166,15 @@ void MGoingPage::setupUI()
     upcomingFont.setBold(true);
     upcomingLabel->setFont(upcomingFont);
     upcomingLabel->setAlignment(Qt::AlignCenter);
-    contentLayout->addWidget(upcomingLabel);
-    contentLayout->addSpacing(20);
+    m_contentLayout->addWidget(upcomingLabel);
+    m_contentLayout->addSpacing(20);
 
-    // Add club event items
-    contentLayout->addWidget(createClubEventItem("Chemistry Club", "20", "20"));
-    contentLayout->addWidget(createSeparator());
-    contentLayout->addWidget(createClubEventItem("Science Club", "20", "20"));
-    contentLayout->addWidget(createSeparator());
-    contentLayout->addWidget(createClubEventItem("Table Tennis Club", "20", "20"));
-    contentLayout->addWidget(createSeparator());
-    contentLayout->addWidget(createClubEventItem("Table Tennis Club", "20", "20"));
+    // Content will be added dynamically when loadUserEvents is called
+    m_contentLayout->addStretch(1);
 
-    contentLayout->addStretch(1);
+    scrollArea->setWidget(m_contentWidget);
 
-    scrollArea->setWidget(contentWidget);
-
-    // Bottom navigation bar - KEEPING THE EXISTING CODE
+    // Bottom navigation bar
     m_bottomNavBar = new QWidget();
     m_bottomNavBar->setFixedHeight(60);
     m_bottomNavBar->setStyleSheet("background-color: white; border-top: 1px solid #e0e0e0;");
@@ -89,7 +183,7 @@ void MGoingPage::setupUI()
     m_bottomNavLayout->setContentsMargins(10, 5, 10, 5);
     m_bottomNavLayout->setSpacing(0);
 
-    // Create navigation buttons with icons (matching MClubPage)
+    // Create navigation buttons with icons
     // Home icon
     QPushButton* homeIcon = new QPushButton();
     QIcon homeIconImage(":/images/resources/home_logo.png");
@@ -161,23 +255,21 @@ void MGoingPage::setupUI()
     m_mainLayout->addWidget(m_bottomNavBar);
 
     // Initialize the toggle buttons and stacked widget as empty but instantiated
-    // so they exist but don't cause crashes
     m_joinedButton = new QPushButton(this);
     m_joinedButton->hide();
-
     m_pendingButton = new QPushButton(this);
     m_pendingButton->hide();
-
     m_stackedWidget = new QStackedWidget(this);
     m_stackedWidget->hide();
 
     // Set fixed width to match window size
     setFixedWidth(350);
+    setFixedHeight(650);
 
     qDebug() << "MGoingPage setupUI completed successfully";
 }
 
-QWidget* MGoingPage::createClubEventItem(const QString& name, const QString& rank, const QString& members)
+QWidget* MGoingPage::createClubEventItem(int eventId, const QString& clubName, const QString& eventContent, const QByteArray& eventPhoto, const QString& eventCode, QDateTime eventDate)
 {
     QWidget* itemWidget = new QWidget();
     QVBoxLayout* itemLayout = new QVBoxLayout(itemWidget);
@@ -194,10 +286,16 @@ QWidget* MGoingPage::createClubEventItem(const QString& name, const QString& ran
     logoLabel->setFixedSize(80, 80);
     logoLabel->setStyleSheet("background-color: #1f3864; border-radius: 5px;");
 
-    // Try to load the image, if failed, create a placeholder
-    QPixmap logoPixmap(":/images/resources/club_icon.png");
-    if (logoPixmap.isNull()) {
-        // Create a placeholder with an atom symbol
+    // Try to load the image from the event_photo
+    if (!eventPhoto.isEmpty()) {
+        QPixmap logoPixmap;
+        if (logoPixmap.loadFromData(eventPhoto)) {
+            logoLabel->setPixmap(logoPixmap.scaled(80, 80, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        }
+    }
+
+    // If no image is set, create a placeholder
+    if (logoLabel->pixmap().isNull()) {
         QPixmap placeholder(80, 80);
         placeholder.fill(Qt::transparent);
         QPainter painter(&placeholder);
@@ -206,18 +304,15 @@ QWidget* MGoingPage::createClubEventItem(const QString& name, const QString& ran
         painter.setPen(Qt::NoPen);
         painter.drawRect(0, 0, 80, 80);
 
-        // Draw circle for atom
-        painter.setBrush(QBrush(Qt::white));
-        painter.setPen(QPen(Qt::white, 2));
-        painter.drawEllipse(40, 40, 30, 30);
-
-        // Draw orbital paths
-        painter.drawEllipse(40, 40, 50, 20);
-        painter.drawEllipse(40, 40, 20, 50);
+        // Draw 'E' for event
+        painter.setPen(QPen(Qt::white));
+        QFont font = painter.font();
+        font.setPointSize(30);
+        font.setBold(true);
+        painter.setFont(font);
+        painter.drawText(placeholder.rect(), Qt::AlignCenter, "E");
 
         logoLabel->setPixmap(placeholder);
-    } else {
-        logoLabel->setPixmap(logoPixmap.scaled(80, 80, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     }
 
     topRowLayout->addWidget(logoLabel);
@@ -228,18 +323,20 @@ QWidget* MGoingPage::createClubEventItem(const QString& name, const QString& ran
     infoLayout->setContentsMargins(10, 0, 0, 0);
     infoLayout->setSpacing(2);
 
-    QLabel* nameLabel = new QLabel(name);
+    QLabel* nameLabel = new QLabel(clubName);
     QFont nameFont;
     nameFont.setPointSize(14);
     nameFont.setBold(true);
     nameLabel->setFont(nameFont);
 
-    QLabel* rankLabel = new QLabel("Rank: " + rank);
-    QLabel* membersLabel = new QLabel("Members: " + members);
+    QLabel* eventContentLabel = new QLabel(eventContent);
+    eventContentLabel->setWordWrap(true);
+
+    QLabel* dateLabel = new QLabel("Date: " + eventDate.toString("dd/MM/yyyy hh:mm AP"));
 
     infoLayout->addWidget(nameLabel);
-    infoLayout->addWidget(rankLabel);
-    infoLayout->addWidget(membersLabel);
+    infoLayout->addWidget(eventContentLabel);
+    infoLayout->addWidget(dateLabel);
     infoLayout->addStretch();
 
     topRowLayout->addWidget(infoWidget, 1);
@@ -284,8 +381,154 @@ QWidget* MGoingPage::createClubEventItem(const QString& name, const QString& ran
     // Add bottom row to main layout
     itemLayout->addWidget(bottomRowWidget);
 
+    // Store the event ID associated with the input field and button
+    m_eventInputMap[codeInput] = eventId;
+    m_eventButtonMap[enterButton] = eventId;
+
+    // Connect the button to the verification function
+    connect(enterButton, &QPushButton::clicked, this, &MGoingPage::verifyEventCode);
+
     return itemWidget;
 }
+
+void MGoingPage::verifyEventCode()
+{
+    // Get the button that was clicked
+    QPushButton* button = qobject_cast<QPushButton*>(sender());
+    if (!button || !m_eventButtonMap.contains(button)) {
+        qDebug() << "Invalid button or event ID mapping";
+        return;
+    }
+
+    int eventId = m_eventButtonMap[button];
+
+    // Find the associated input field
+    QLineEdit* inputField = nullptr;
+    for (auto it = m_eventInputMap.begin(); it != m_eventInputMap.end(); ++it) {
+        if (it.value() == eventId) {
+            inputField = it.key();
+            break;
+        }
+    }
+
+    if (!inputField) {
+        qDebug() << "No input field found for event ID:" << eventId;
+        return;
+    }
+
+    QString enteredCode = inputField->text().trimmed();
+    if (enteredCode.isEmpty()) {
+        QMessageBox::warning(this, "Input Required", "Please enter an event code.");
+        return;
+    }
+
+    // Query the database to get the correct event code
+    QSqlQuery query;
+    query.prepare("SELECT event_code FROM events_list WHERE event_id = :eventId");
+    query.bindValue(":eventId", eventId);
+
+    if (!query.exec() || !query.next()) {
+        qDebug() << "Failed to query event code:" << query.lastError().text();
+        return;
+    }
+
+    QString correctCode = query.value(0).toString();
+
+    if (enteredCode == correctCode) {
+        // Update user points (+10 points)
+        if (updateUserPoints(m_currentUserId, 10)) {
+            // Remove the event from the user's going events list
+            if (removeEventFromUserGoing(m_currentUserId, eventId)) {
+                QMessageBox::information(this, "Success", "Event Participation Successful!\nYou gained 10 points!");
+
+                // Refresh the events list
+                loadUserEvents();
+            }
+        }
+    } else {
+        QMessageBox::warning(this, "Invalid Code", "The entered code is incorrect. Please try again.");
+    }
+}
+
+bool MGoingPage::updateUserPoints(int userId, int pointsToAdd)
+{
+    QSqlQuery query;
+    query.prepare("UPDATE users_list SET points = points + :points WHERE user_id = :userId");
+    query.bindValue(":points", pointsToAdd);
+    query.bindValue(":userId", userId);
+
+    if (!query.exec()) {
+        qDebug() << "Failed to update user points:" << query.lastError().text();
+        return false;
+    }
+
+    return true;
+}
+
+bool MGoingPage::removeEventFromUserGoing(int userId, int eventId)
+{
+    // First get the current going events list
+    QSqlQuery query;
+    query.prepare("SELECT going_events FROM users_list WHERE user_id = :userId");
+    query.bindValue(":userId", userId);
+
+    if (!query.exec() || !query.next()) {
+        qDebug() << "Failed to query user's going events:" << query.lastError().text();
+        return false;
+    }
+
+    QString goingEventsStr = query.value(0).toString();
+    QVector<int> goingEvents = Database::deserializeUserIds(goingEventsStr);
+
+
+
+    // Remove the event ID from the list
+    goingEvents.removeAll(eventId);
+
+    // Update the user's going events list
+    QString newGoingEventsStr = Database::serializeUserIds(goingEvents);
+
+    query.prepare("UPDATE users_list SET going_events = :goingEvents WHERE user_id = :userId");
+    query.bindValue(":goingEvents", newGoingEventsStr);
+    query.bindValue(":userId", userId);
+
+    if (!query.exec()) {
+        qDebug() << "Failed to update user's going events:" << query.lastError().text();
+        return false;
+    }
+
+    return true;
+}
+
+QString MGoingPage::getClubNameById(int clubId)
+{
+    QSqlQuery query;
+    query.prepare("SELECT club_name FROM clubs_list WHERE club_id = :clubId");
+    query.bindValue(":clubId", clubId);
+
+    if (query.exec() && query.next()) {
+        return query.value(0).toString();
+    }
+
+    return "Unknown Club";
+}
+
+void MGoingPage::clearEvents()
+{
+    // Clear the mappings
+    m_eventButtonMap.clear();
+    m_eventInputMap.clear();
+
+    // Remove all widgets from the content layout except the title and spacing
+    while (m_contentLayout->count() > 3) {
+        QLayoutItem* item = m_contentLayout->takeAt(3);
+        if (item->widget()) {
+            delete item->widget();
+        }
+        delete item;
+    }
+}
+
 QWidget* MGoingPage::createSeparator()
 {
     QFrame* separator = new QFrame();
@@ -298,13 +541,13 @@ QWidget* MGoingPage::createSeparator()
 
 void MGoingPage::showJoinedView()
 {
-    // No implementation needed for our simplified version
+    // Not used in our implementation, but kept for compatibility
     qDebug() << "showJoinedView called";
 }
 
 void MGoingPage::showPendingView()
 {
-    // No implementation needed for our simplified version
+    // Not used in our implementation, but kept for compatibility
     qDebug() << "showPendingView called";
 }
 
