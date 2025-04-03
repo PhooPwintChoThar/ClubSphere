@@ -4,11 +4,11 @@
 #include <QSqlError>
 #include <QDebug>
 
-User::User() : userId(0), userName(""), points(0), suspended(false) {
+User::User() : userId(0), userName(""), points(0) {
 }
 
-User::User(int id, const QString& name, int pts, const QByteArray& photo, bool isSuspended)
-    : userId(id), userName(name), points(pts), profilePhoto(photo), suspended(isSuspended) {
+User::User(int id, const QString& name, int pts, const QByteArray& photo)
+    : userId(id), userName(name), points(pts), profilePhoto(photo) {
     // If no photo is provided, use default
     if (profilePhoto.isEmpty()) {
         profilePhoto = Database::loadDefaultProfilePhoto();
@@ -88,15 +88,15 @@ bool User::saveToDatabase() const {
     if (isUpdate) {
         // Update existing user
         query.prepare("UPDATE users_list SET name = :name, points = :points, "
-                      "profile_photo = :photo, suspended = :suspended, "
+                      "profile_photo = :photo, "
                       "joined_clubs = :joinedClubs, pending_clubs = :pendingClubs, "
                       "going_events = :goingEvents "
                       "WHERE user_id = :id");
     } else {
         // Insert new user
-        query.prepare("INSERT INTO users_list (user_id, name, points, profile_photo, suspended, "
+        query.prepare("INSERT INTO users_list (user_id, name, points, profile_photo, "
                       "joined_clubs, pending_clubs, going_events) "
-                      "VALUES (:id, :name, :points, :photo, :suspended, "
+                      "VALUES (:id, :name, :points, :photo, "
                       ":joinedClubs, :pendingClubs, :goingEvents)");
     }
 
@@ -104,7 +104,6 @@ bool User::saveToDatabase() const {
     query.bindValue(":name", userName);
     query.bindValue(":points", points);
     query.bindValue(":photo", profilePhoto);
-    query.bindValue(":suspended", suspended ? 1 : 0);
     query.bindValue(":joinedClubs", serializedJoinedClubs);
     query.bindValue(":pendingClubs", serializedPendingClubs);
     query.bindValue(":goingEvents", serializedGoingEvents);
@@ -128,7 +127,7 @@ bool User::saveToDatabase() const {
 User User::loadFromDatabase(int userId) {
     User user;
     QSqlQuery query;
-    query.prepare("SELECT user_id, name, points, profile_photo, suspended, "
+    query.prepare("SELECT user_id, name, points, profile_photo, "
                   "joined_clubs, pending_clubs, going_events "
                   "FROM users_list WHERE user_id = :id");
     query.bindValue(":id", userId);
@@ -138,10 +137,9 @@ User User::loadFromDatabase(int userId) {
         user.setName(query.value(1).toString());
         user.setPoints(query.value(2).toInt());
         user.setPhoto(query.value(3).toByteArray());
-        user.setSuspended(query.value(4).toInt() == 1);
-        user.setJoinedClubs(Database::deserializeUserIds(query.value(5).toString()));
-        user.setPendingClubs(Database::deserializeUserIds(query.value(6).toString()));
-        user.setGoingEvents(Database::deserializeUserIds(query.value(7).toString()));
+        user.setJoinedClubs(Database::deserializeUserIds(query.value(4).toString()));
+        user.setPendingClubs(Database::deserializeUserIds(query.value(5).toString()));
+        user.setGoingEvents(Database::deserializeUserIds(query.value(6).toString()));
     } else {
         qDebug() << "Error loading user from database:" << query.lastError().text();
     }
@@ -151,7 +149,7 @@ User User::loadFromDatabase(int userId) {
 
 QVector<User> User::loadAllUsers() {
     QVector<User> users;
-    QSqlQuery query("SELECT user_id, name, points, profile_photo, suspended, "
+    QSqlQuery query("SELECT user_id, name, points, profile_photo, "
                     "joined_clubs, pending_clubs, going_events FROM users_list");
 
     while (query.next()) {
@@ -160,10 +158,9 @@ QVector<User> User::loadAllUsers() {
         user.setName(query.value(1).toString());
         user.setPoints(query.value(2).toInt());
         user.setPhoto(query.value(3).toByteArray());
-        user.setSuspended(query.value(4).toInt() == 1);
-        user.setJoinedClubs(Database::deserializeUserIds(query.value(5).toString()));
-        user.setPendingClubs(Database::deserializeUserIds(query.value(6).toString()));
-        user.setGoingEvents(Database::deserializeUserIds(query.value(7).toString()));
+        user.setJoinedClubs(Database::deserializeUserIds(query.value(4).toString()));
+        user.setPendingClubs(Database::deserializeUserIds(query.value(5).toString()));
+        user.setGoingEvents(Database::deserializeUserIds(query.value(6).toString()));
         users.append(user);
     }
 
