@@ -208,7 +208,7 @@ void MainWindow::initializeMemberGoingPage()
 {
     if (!memberGoingPage) {
         qDebug() << "Initializing Member Going Page";
-        memberGoingPage = new MGoingPage();
+        memberGoingPage = new MGoingPage(currentUserId);
         // Connect navigation signals
         connect(memberGoingPage, &MGoingPage::navigateToHome, this, &MainWindow::showMemberHomePage);
         connect(memberGoingPage, &MGoingPage::navigateToClub, this, &MainWindow::showMemberClubPage);
@@ -249,7 +249,7 @@ void MainWindow::initializeMemberEventPage(int clubId)
 {
     if (!memberEventPage) {
         qDebug() << "Initializing Member Event Page";
-        memberEventPage = new MEventPage(currentUserId , clubId );
+        memberEventPage = new MEventPage(clubId , currentUserId );
         // Connect navigation signals
         connect(memberEventPage, &MEventPage::navigateToHome, this, &MainWindow::showMemberHomePage);
         connect(memberEventPage, &MEventPage::navigateToClub, this, &MainWindow::showMemberClubPage);
