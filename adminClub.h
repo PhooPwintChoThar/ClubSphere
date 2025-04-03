@@ -24,13 +24,11 @@ public:
 signals:
     void navigateToHome();
     void navigateToMembers();
-    void navigateToNotifications();
 
 private slots:
     void onHomeButtonClicked();
     void onProfileButtonClicked();
     void onGroupsButtonClicked();
-    void onNotificationsButtonClicked();
     void onAddClubClicked();
     void searchClubs(const QString &searchText);
 
@@ -66,7 +64,6 @@ private:
     QPushButton *homeButton;
     QPushButton *profileButton;
     QPushButton *groupsButton;
-    QPushButton *notificationsButton;
 };
 
 #endif // ADMINCLUB_H
