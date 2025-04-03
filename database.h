@@ -14,8 +14,10 @@
 #include <QRandomGenerator>
 #include<QDateTime>
 
+
 class Database {
 public:
+
     // Initialize database and create tables
     static bool initialize() {
         // Remove any existing connections
@@ -38,7 +40,6 @@ public:
                         "password INTEGER NOT NULL,"
                         "points INTEGER NOT NULL,"
                         "profile_photo BLOB,"
-                        "suspended INTEGER DEFAULT 0,"  // 0 = not suspended, 1 = suspended
                         "name TEXT,"  // Added name column
                         "joined_clubs TEXT,"  // Stores serialized club IDs that user has joined
                         "pending_clubs TEXT,"  // Stores serialized club IDs that user has requested but not approved
@@ -48,6 +49,21 @@ public:
             return false;
         }
 
+        query.prepare("SELECT COUNT(*) FROM users_list WHERE user_id = 67001922");
+        if (query.exec() && query.next() && query.value(0).toInt() == 0) {
+            // User doesn't exist, create default user
+            QByteArray defaultProfilePhoto = loadDefaultProfilePhoto();
+
+            query.prepare("INSERT INTO users_list (user_id, password, points, profile_photo, name) "
+                          "VALUES (67001922, 123456, 0, :profile_photo, 'Admin')");
+            query.bindValue(":profile_photo", defaultProfilePhoto);
+
+            if (!query.exec()) {
+                qDebug() << "Error creating default user:" << query.lastError();
+                return false;
+            }
+            qDebug() << "Created default user with ID 67001922";
+        }
 
         if (!query.exec("CREATE TABLE IF NOT EXISTS clubs_list ("
                         "club_id INTEGER PRIMARY KEY, "
@@ -95,6 +111,20 @@ public:
                         "FOREIGN KEY (sender_id) REFERENCES users_list(user_id)"
                         ")")) {
             qDebug() << "Error creating messages_list table:" << query.lastError();
+            return false;
+        }
+
+
+        if (!query.exec("CREATE TABLE IF NOT EXISTS notification_lists ("
+                        "club_id INTEGER NOT NULL, "
+                        "is_request INTEGER NOT NULL, "  // 0 = notification, 1 = request
+                        "content TEXT NOT NULL, "
+                        "user_id INTEGER NOT NULL, "
+                        "timestamp INTEGER NOT NULL, "
+                        "FOREIGN KEY (club_id) REFERENCES clubs_list(club_id), "
+                        "FOREIGN KEY (user_id) REFERENCES users_list(user_id)"
+                        ")")) {
+            qDebug() << "Error creating notification_lists table:" << query.lastError();
             return false;
         }
 
@@ -288,7 +318,7 @@ public:
         QVector<QPair<int, QString>> studentData = {
                                                     {67011073, "Adisorn Numpradit"}, {67011078, "Bhawat Kolkitchaiwan"},
                                                     {67011091, "Chananyu Chinnawuth"}, {67011093, "Chavit Saritdeechakul"}, {67011096, "Chayut Panangkasiri"}, {67011100, "Chirawad Koollachote"}, {67011110, "Ekboonya Srisook"},
-                                                    {67011115, "Hsu Myat Shwe Sin"}, {67011117, "Khanin Chuanchaisit"}, {67011152, "Koses Suvarnasuddhi"}, {67011153, "Kyi Thant Sin"}, {67011177, "Napatrawee Chieowwitt"},
+                                                    {67011118, "Hsu Myat Shwe Sin"}, {67011117, "Khanin Chuanchaisit"}, {67011152, "Koses Suvarnasuddhi"}, {67011153, "Kyi Thant Sin"}, {67011177, "Napatrawee Chieowwitt"},
                                                     {67011112, "Nuttamon Ketkaeo"}, {67011236, "Pannawhiz Pipatmunkong"}, {67011258, "Paphavee Yanmook"}, {67011273, "Payut Kapasuwan"}, {67011287, "Ramida Laphashopkin"},
                                                     {67011297, "Sarun Rattanapan"}, {67011300, "Singhayapol Kliengma"}, {67011302, "Sirapot Satarntraipope"}, {67011318, "Supichaya Ratanaopas"}, {67011322, "Suwitchaya Chintawan"},
                                                     {67011335, "Thanaphat Chongkananu"}, {67011352, "Theepakorn Phayonrat"}, {67011362, "Theepakon Khwanna"}, {67011372, "Thunthanut Teemaethaw"}, {67011371, "Virithpol Thara"},
@@ -356,9 +386,13 @@ public:
         }
 
         return QString(); // Return empty string if name not found
+
     }
 
+
+
 };
+
 
 
 #endif // DATABASE_H
