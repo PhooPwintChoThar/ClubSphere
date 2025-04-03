@@ -66,20 +66,35 @@ void AdminMember::setupUI()
     membersLabel->setFont(QFont("Arial", 18, QFont::Bold));
     mainLayout->addWidget(membersLabel);
 
-    // Scroll area for member list
-    scrollArea = new QScrollArea(this);
+    // Create a container widget to properly manage the scroll area
+    QWidget *scrollContainer = new QWidget(this);
+    QVBoxLayout *scrollContainerLayout = new QVBoxLayout(scrollContainer);
+    scrollContainerLayout->setContentsMargins(0, 0, 0, 0);
+    scrollContainerLayout->setSpacing(0);
+
+    // Scroll area for member list - key changes here
+    scrollArea = new QScrollArea(scrollContainer);
     scrollArea->setWidgetResizable(true);
     scrollArea->setFrameShape(QFrame::NoFrame);
+    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded); // Changed from AlwaysOff to AsNeeded
     scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
+    // Set a minimum height for the scroll area to ensure it takes up space
+    scrollArea->setMinimumHeight(350); // Adjust this value based on your UI needs
+
     scrollContent = new QWidget(scrollArea);
+    scrollContent->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::MinimumExpanding);
+
     membersLayout = new QVBoxLayout(scrollContent);
     membersLayout->setAlignment(Qt::AlignTop);
     membersLayout->setContentsMargins(0, 0, 0, 0);
     membersLayout->setSpacing(15);
 
     scrollArea->setWidget(scrollContent);
-    mainLayout->addWidget(scrollArea);
+    scrollContainerLayout->addWidget(scrollArea);
+
+    // Add the scroll container to the main layout
+    mainLayout->addWidget(scrollContainer, 1); // Give it a stretch factor of 1 to fill available space
 }
 
 
@@ -115,28 +130,27 @@ void AdminMember::setupMemberList()
 
     // Query users from the database with additional debugging
     QSqlQuery query;
-    query.prepare("SELECT user_id, name, points, suspended, profile_photo FROM users_list ORDER BY points DESC");
+    query.prepare("SELECT user_id, name, points, profile_photo FROM users_list ORDER BY points DESC");
 
     if (query.exec()) {
         int userCount = 0;
-        QVector<QPair<QString, bool>> debugUsers;
+        QVector<QString> debugUsers;
 
         while (query.next()) {
             int userId = query.value(0).toInt();
             QString userName = query.value(1).toString();
             int points = query.value(2).toInt();
-            bool suspended = query.value(3).toInt() == 1;
-            QByteArray profilePhoto = query.value(4).toByteArray();
+            QByteArray profilePhoto = query.value(3).toByteArray();
 
             // Debug: Store user details
-            debugUsers.append({userName, suspended});
+            debugUsers.append(userName);
 
             // Use name if available, otherwise default to "User + ID"
             if (userName.isEmpty()) {
                 userName = "User " + QString::number(userId);
             }
 
-            createMemberCard(userName, QString::number(userId), points, suspended, profilePhoto);
+            createMemberCard(userName, QString::number(userId), points, profilePhoto);
             userCount++;
         }
 
@@ -144,7 +158,7 @@ void AdminMember::setupMemberList()
         qDebug() << "Total users retrieved:" << userCount;
         qDebug() << "Users Details:";
         for (const auto& user : debugUsers) {
-            qDebug() << "User:" << user.first << "Suspended:" << user.second;
+            qDebug() << "User:" << user ;
         }
 
         // Verify total users in database again
@@ -158,15 +172,15 @@ void AdminMember::setupMemberList()
         qDebug() << "Error fetching users:" << query.lastError().text();
     }
 
-    // Add spacer to push navigation bar to bottom
-    mainLayout->addStretch();
+
 }
 
 
-void AdminMember::createMemberCard(const QString &name, const QString &id, int points, bool suspended, const QByteArray &profileImageData)
+void AdminMember::createMemberCard(const QString &name, const QString &id, int points, const QByteArray &profileImageData)
 {
     QFrame *memberFrame = new QFrame(this);
     memberFrame->setFrameShape(QFrame::NoFrame);
+    memberFrame->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 
     QHBoxLayout *cardLayout = new QHBoxLayout(memberFrame);
     cardLayout->setContentsMargins(0, 10, 0, 10);
@@ -227,56 +241,21 @@ void AdminMember::createMemberCard(const QString &name, const QString &id, int p
     infoLayout->addWidget(idLabel);
     infoLayout->addWidget(pointsLabel);
 
-    // Action button
-    QPushButton *actionButton = new QPushButton(this);
-    actionButton->setFixedWidth(120);
-    if (suspended) {
-        actionButton->setText("Unsuspend");
-        actionButton->setStyleSheet("QPushButton { background-color: #E0E0E0; border-radius: 12px; padding: 8px 12px; color: #007700; }");
-    } else {
-        actionButton->setText("Suspend");
-        actionButton->setStyleSheet("QPushButton { background-color: #E0E0E0; border-radius: 12px; padding: 8px 12px; color: #FF0000; }");
-    }
-
-    // Connect action button to toggle suspension
-    connect(actionButton, &QPushButton::clicked, [this, id, suspended]() {
-        toggleUserSuspension(id, !suspended);
-    });
-
     cardLayout->addWidget(profileImage);
     cardLayout->addLayout(infoLayout, 1);
-    cardLayout->addWidget(actionButton);
 
     membersLayout->addWidget(memberFrame);
 
     // Add separator line except for the last item
-    if (membersLayout->count() < 4) {
-        QFrame *line = new QFrame(this);
-        line->setFrameShape(QFrame::HLine);
-        line->setFrameShadow(QFrame::Sunken);
-        line->setStyleSheet("background-color: #E0E0E0;");
-        line->setMaximumHeight(1);
-        membersLayout->addWidget(line);
-    }
+    QFrame *line = new QFrame(this);
+    line->setFrameShape(QFrame::HLine);
+    line->setFrameShadow(QFrame::Sunken);
+    line->setStyleSheet("background-color: #E0E0E0;");
+    line->setMaximumHeight(1);
+    membersLayout->addWidget(line);
 }
 
-void AdminMember::toggleUserSuspension(const QString &userId, bool suspend)
-{
-    QSqlQuery query;
-    query.prepare("UPDATE users_list SET suspended = :suspended WHERE user_id = :userId");
-    query.bindValue(":suspended", suspend ? 1 : 0);
-    query.bindValue(":userId", userId.toInt());
 
-    if (query.exec()) {
-        qDebug() << (suspend ? "Suspended" : "Unsuspended") << "user with ID:" << userId;
-        // Refresh the member list to reflect the changes
-        setupMemberList();
-    } else {
-        qDebug() << "Error toggling user suspension:" << query.lastError().text();
-    }
-}
-
-// Add this method to the adminMember.h file
 void AdminMember::setupSearchFunctionality()
 {
     // Connect search edit to search slot
@@ -352,15 +331,9 @@ void AdminMember::setupNavigation()
     groupsButton->setIconSize(QSize(30, 30));
     groupsButton->setStyleSheet("QPushButton { border: none; }");
 
-    notificationsButton = new QPushButton("", this);
-    notificationsButton->setIcon(QIcon(":/images/resources/noti_logo.png"));
-    notificationsButton->setIconSize(QSize(20, 20));
-    notificationsButton->setStyleSheet("QPushButton { border: none; }");
-
     navLayout->addWidget(homeButton);
     navLayout->addWidget(profileButton);
     navLayout->addWidget(groupsButton);
-    navLayout->addWidget(notificationsButton);
 
     mainLayout->addWidget(navigationFrame);
 
@@ -368,7 +341,6 @@ void AdminMember::setupNavigation()
     connect(homeButton, &QPushButton::clicked, this, &AdminMember::onHomeButtonClicked);
     connect(profileButton, &QPushButton::clicked, this, &AdminMember::onProfileButtonClicked);
     connect(groupsButton, &QPushButton::clicked, this, &AdminMember::onGroupsButtonClicked);
-    connect(notificationsButton, &QPushButton::clicked, this, &AdminMember::onNotificationsButtonClicked);
 }
 
 void AdminMember::onHomeButtonClicked()
@@ -387,12 +359,6 @@ void AdminMember::onGroupsButtonClicked()
 {
     qDebug() << "Groups button clicked in AdminMember";
     emit navigateToClubs();
-}
-
-void AdminMember::onNotificationsButtonClicked()
-{
-    qDebug() << "Notifications button clicked in AdminMember";
-    emit navigateToNotifications();
 }
 
 QFrame* AdminMember::createRoundedFrame()
