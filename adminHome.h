@@ -19,13 +19,11 @@ public:
 signals:
     void navigateToMembers();
     void navigateToClubs();
-    void navigateToNotifications();
 
 private slots:
     void onHomeButtonClicked();
     void onProfileButtonClicked();
     void onGroupsButtonClicked();
-    void onNotificationsButtonClicked();
 
 private:
     int getTotalUsersCount();
@@ -80,7 +78,6 @@ private:
     QPushButton *homeButton;
     QPushButton *profileButton;
     QPushButton *groupsButton;
-    QPushButton *notificationsButton;
 };
 
 #endif // ADMINHOME_H
