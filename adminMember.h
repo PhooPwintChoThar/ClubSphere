@@ -21,13 +21,11 @@ public:
 signals:
     void navigateToHome();
     void navigateToClubs();
-    void navigateToNotifications();
 
 private slots:
     void onHomeButtonClicked();
     void onProfileButtonClicked();
     void onGroupsButtonClicked();
-    void onNotificationsButtonClicked();
     void searchMembers(const QString &searchText);
 
 private:
@@ -44,7 +42,6 @@ private:
     QPushButton *homeButton;
     QPushButton *profileButton;
     QPushButton *groupsButton;
-    QPushButton *notificationsButton;
 
     // Methods
     void setupUI();
@@ -52,8 +49,7 @@ private:
     void setupNavigation();
     void setupSearchFunctionality();
     QFrame* createRoundedFrame();
-    void createMemberCard(const QString &name, const QString &id, int points, bool suspended, const QByteArray &profileImageData = QByteArray());
-    void toggleUserSuspension(const QString &userId, bool suspend);
+    void createMemberCard(const QString &name, const QString &id, int points, const QByteArray &profileImageData = QByteArray());
 };
 
 #endif // ADMINMEMBER_H
