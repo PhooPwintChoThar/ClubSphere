@@ -8,14 +8,13 @@
 class User {
 public:
     User();
-    User(int id, const QString& name, int points, const QByteArray& photo = QByteArray(), bool suspended = false);
+    User(int id, const QString& name, int points, const QByteArray& photo = QByteArray());
 
     // Getters
     int getId() const { return userId; }
     QString getName() const { return userName; }
     int getPoints() const { return points; }
     QByteArray getPhoto() const { return profilePhoto; }
-    bool isSuspended() const { return suspended; }
     QVector<int> getJoinedClubs() const { return joinedClubs; }
     QVector<int> getPendingClubs() const { return pendingClubs; }
     QVector<int> getGoingEvents() const { return goingEvents; }
