@@ -26,7 +26,15 @@ SOURCES += \
     lnoti.cpp \
     loginPage.cpp \
     main.cpp \
-    registerPage.cpp
+    mboardpage.cpp \
+    mchatpage.cpp \
+    mclubpage.cpp \
+    meventpage.cpp \
+    mgoingpage.cpp \
+    mhomepage.cpp \
+    mprofilepage.cpp \
+    registerPage.cpp \
+    searchclubs.cpp
 
 HEADERS += \
     AddClubDialog.h \
@@ -46,7 +54,15 @@ HEADERS += \
     lhomepage.h \
     lnoti.h \
     loginPage.h \
-    registerPage.h
+    mboardpage.h \
+    mchatpage.h \
+    mclubpage.h \
+    meventpage.h \
+    mgoingpage.h \
+    mhomepage.h \
+    mprofilepage.h \
+    registerPage.h \
+    searchclubs.h
 
 FORMS += \
     homePage.ui
