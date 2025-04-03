@@ -200,13 +200,12 @@ void RegisterPage::onRegisterButtonClicked() {
 
     // Prepare insert query with profile photo BLOB and name from se_names_list if available
     QSqlQuery query;
-    query.prepare("INSERT INTO users_list (user_id, password, points, profile_photo, suspended, name) VALUES (?, ?, ?, ?, ?, ?)");
+    query.prepare("INSERT INTO users_list (user_id, password, points, profile_photo, name) VALUES (?, ?, ?, ?, ?)");
     query.addBindValue(studentId);
     query.addBindValue(password);
     query.addBindValue(point);
     query.addBindValue(profilePhotoData);
-    query.addBindValue(0);  // Explicitly set suspended to 0 (false)
-    query.addBindValue(studentName);  // Set name from se_names_list (will be empty if not found)
+    query.addBindValue(studentName);
 
     if (query.exec()) {
         qDebug() << "User registered successfully!";
