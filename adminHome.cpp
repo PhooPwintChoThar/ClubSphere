@@ -276,15 +276,9 @@ void AdminHome::setupNavigation()
     groupsButton->setIconSize(QSize(30, 30));
     groupsButton->setStyleSheet("QPushButton { border: none; }");
 
-    notificationsButton = new QPushButton("", this);
-    notificationsButton->setIcon(QIcon(":/images/resources/noti_logo.png"));
-    notificationsButton->setIconSize(QSize(20, 20));
-    notificationsButton->setStyleSheet("QPushButton { border: none; }");
-
     navLayout->addWidget(homeButton);
     navLayout->addWidget(profileButton);
     navLayout->addWidget(groupsButton);
-    navLayout->addWidget(notificationsButton);
 
     mainLayout->addWidget(navigationFrame);
 
@@ -299,7 +293,6 @@ void AdminHome::setupNavigation()
     connect(homeButton, &QPushButton::clicked, this, &AdminHome::onHomeButtonClicked);
     connect(profileButton, &QPushButton::clicked, this, &AdminHome::onProfileButtonClicked);
     connect(groupsButton, &QPushButton::clicked, this, &AdminHome::onGroupsButtonClicked);
-    connect(notificationsButton, &QPushButton::clicked, this, &AdminHome::onNotificationsButtonClicked);
 }
 
 void AdminHome::onHomeButtonClicked()
@@ -318,12 +311,6 @@ void AdminHome::onGroupsButtonClicked()
 {
     qDebug() << "Groups button clicked in AdminHome";
     emit navigateToClubs();
-}
-
-void AdminHome::onNotificationsButtonClicked()
-{
-    qDebug() << "Notifications button clicked in AdminHome";
-    emit navigateToNotifications();
 }
 
 QLabel* AdminHome::createMedalLabel(const QString &color, bool withRibbon)
