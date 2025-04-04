@@ -139,10 +139,41 @@ void MHomepage::setupUI()
     eventIcon->setFixedSize(40, 40);
     eventIcon->setStyleSheet("QPushButton { background-color: transparent; border: none; }");
 
-    // Profile icon
+    // In MHomepage::setupUI() method, replace the profile icon creation with:
+
+    // Profile icon with user photo
     QPushButton* profileIcon = new QPushButton();
-    profileIcon->setIcon(QIcon(":/images/resources/user.png"));
-    profileIcon->setIconSize(QSize(24, 24));
+    QSqlQuery profileQuery;
+    profileQuery.prepare("SELECT profile_photo FROM users_list WHERE user_id = :userId");
+    profileQuery.bindValue(":userId", m_userId);
+
+    if (profileQuery.exec() && profileQuery.next() && !profileQuery.value(0).isNull()) {
+        QByteArray photoData = profileQuery.value(0).toByteArray();
+        QPixmap userPhoto;
+        if (userPhoto.loadFromData(photoData)) {
+            // Create circular profile photo
+            QPixmap circularPhoto = QPixmap(40, 40);
+            circularPhoto.fill(Qt::transparent);
+
+            QPainter painter(&circularPhoto);
+            painter.setRenderHint(QPainter::Antialiasing);
+            painter.setBrush(QBrush(userPhoto.scaled(40, 40, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)));
+            painter.setPen(Qt::NoPen);
+            painter.drawEllipse(0, 0, 40, 40);
+
+            profileIcon->setIcon(QIcon(circularPhoto));
+            profileIcon->setIconSize(QSize(40, 40));
+        } else {
+            // Fallback to default icon if image can't be loaded
+            profileIcon->setIcon(QIcon(":/images/resources/user.png"));
+            profileIcon->setIconSize(QSize(24, 24));
+        }
+    } else {
+        // Use default icon if no profile photo
+        profileIcon->setIcon(QIcon(":/images/resources/user.png"));
+        profileIcon->setIconSize(QSize(24, 24));
+    }
+
     profileIcon->setFixedSize(40, 40);
     profileIcon->setStyleSheet("QPushButton { background-color: transparent; border: none; }");
 
