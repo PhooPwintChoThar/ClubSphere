@@ -1,21 +1,18 @@
 #include "lboardAll.h"
-#include <QPixmap>
+#include "database.h"
 #include <QIcon>
+#include <QFont>
+#include <QFrame>
+#include <QRadioButton>
+#include <QPainter>
+#include <QPixmap>
 #include <QDebug>
 
-LeaderboardAll::LeaderboardAll(QWidget *parent) : QWidget(parent), currentTab(ALL_TAB)
+LeaderboardAll::LeaderboardAll(int club_id, QWidget *parent)
+    : QWidget(parent), m_clubId(club_id), m_currentTab(ClubMembers)
 {
     setupUI();
-    setupTabBar();
-    setupTopRankersSection();
-    setupRankingListSection();
-
-    // Load data
-    loadMemberData();
-    loadClubData();
-
-    // Initialize with All tab - explicitly call onAllTabClicked()
-    onAllTabClicked();
+    showClubMembersLeaderboard();
 }
 
 LeaderboardAll::~LeaderboardAll()
@@ -24,620 +21,766 @@ LeaderboardAll::~LeaderboardAll()
 
 void LeaderboardAll::setupUI()
 {
-    // Set background color to light green and fix window size
-    this->setStyleSheet("background-color: #D9E9D8;");
-    this->setFixedSize(350, 650);
+    // Main layout
+    m_mainLayout = new QVBoxLayout(this);
+    m_mainLayout->setContentsMargins(0, 0, 0, 0);
+    m_mainLayout->setSpacing(0);
 
-    // Main layout setup
-    mainLayout = new QVBoxLayout(this);
-    mainLayout->setAlignment(Qt::AlignTop);
-    mainLayout->setContentsMargins(10, 20, 10, 10);
-    mainLayout->setSpacing(15);
+    // Set background color for the entire page
+    setStyleSheet("background-color: #d6e3c6;");
 
-    // Header with back button and title
-    headerWidget = new QWidget(this);
-    headerLayout = new QHBoxLayout(headerWidget);
-    headerLayout->setContentsMargins(0, 0, 0, 0);
+    // Header with page title
+    QWidget* headerWidget = new QWidget();
+    headerWidget->setFixedHeight(50);
+    headerWidget->setStyleSheet("background-color: #d6e3c6;");
 
-    backButton = new QPushButton(this);
-    backButton->setIcon(QIcon(":/resources/back.png"));
-    backButton->setIconSize(QSize(20, 20));
-    backButton->setStyleSheet("QPushButton { border: none; }");
+    QHBoxLayout* headerLayout = new QHBoxLayout(headerWidget);
+    headerLayout->setContentsMargins(12, 4, 12, 4);
 
-    titleLabel = new QLabel("LeaderBoard", this);
-    titleLabel->setFont(QFont("Arial", 20, QFont::Bold));
-    titleLabel->setAlignment(Qt::AlignCenter);
+    // Back button using PNG
+    QPushButton* backButton = new QPushButton();
+    backButton->setIcon(QIcon(":/images/resources/back.png"));
+    backButton->setIconSize(QSize(32, 32));
+    backButton->setFixedSize(32, 32);
+    backButton->setStyleSheet("QPushButton { background-color: transparent; border: none; }");
+    connect(backButton, &QPushButton::clicked, this, &LeaderboardAll::navigateBack);
 
-    headerLayout->addWidget(backButton);
-    headerLayout->addWidget(titleLabel, 1);
-    headerLayout->addSpacing(backButton->sizeHint().width()); // Balance the header
-
-    mainLayout->addWidget(headerWidget);
-
-    // Connect back button
-    connect(backButton, &QPushButton::clicked, this, &LeaderboardAll::onBackButtonClicked);
-}
-
-void LeaderboardAll::setupTabBar()
-{
-    // Create tab bar widget
-    tabWidget = new QWidget(this);
-    tabWidget->setObjectName("tabWidget");
-    tabWidget->setStyleSheet("QWidget#tabWidget { background-color: white; border-radius: 22px; }");
-
-    tabLayout = new QHBoxLayout(tabWidget);
-    tabLayout->setContentsMargins(8, 8, 8, 8);
-    tabLayout->setSpacing(0);
-
-    // Create tab buttons
-    QFont tabFont;
-    tabFont.setPointSize(12);
-    tabFont.setBold(true);
-
-    allTabButton = new QPushButton("All", this);
-    allTabButton->setFont(tabFont);
-    allTabButton->setCheckable(true);
-    allTabButton->setChecked(true);
-
-    membersTabButton = new QPushButton("Members", this);
-    membersTabButton->setFont(tabFont);
-    membersTabButton->setCheckable(true);
-
-    clubsTabButton = new QPushButton("Clubs", this);
-    clubsTabButton->setFont(tabFont);
-    clubsTabButton->setCheckable(true);
-
-    // Set initial button styles (will be updated in updateTabButtonStyles())
-    updateTabButtonStyles();
-
-    tabLayout->addWidget(allTabButton);
-    tabLayout->addWidget(membersTabButton);
-    tabLayout->addWidget(clubsTabButton);
-
-    mainLayout->addWidget(tabWidget);
-
-    // Connect tab button signals
-    connect(allTabButton, &QPushButton::clicked, this, &LeaderboardAll::onAllTabClicked);
-    connect(membersTabButton, &QPushButton::clicked, this, &LeaderboardAll::onMembersTabClicked);
-    connect(clubsTabButton, &QPushButton::clicked, this, &LeaderboardAll::onClubsTabClicked);
-}
-
-void LeaderboardAll::setupTopRankersSection()
-{
-    // Create top rankers section (will be populated based on tab)
-    topRankersWidget = new QWidget(this);
-    topRankersWidget->setStyleSheet("background-color: #D9E9D8; border-radius: 25px;");
-    topRankersWidget->setMinimumHeight(180);
-
-    topRankersLayout = new QHBoxLayout(topRankersWidget);
-    topRankersLayout->setContentsMargins(20, 20, 20, 20);
-    topRankersLayout->setSpacing(10);
-    topRankersLayout->setAlignment(Qt::AlignCenter);
-
-    mainLayout->addWidget(topRankersWidget);
-}
-
-void LeaderboardAll::setupRankingListSection()
-{
-    // Create scrollable area for rankings list
-    rankingsScrollArea = new QScrollArea(this);
-    rankingsScrollArea->setWidgetResizable(true);
-    rankingsScrollArea->setFrameShape(QFrame::NoFrame);
-    rankingsScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    rankingsScrollArea->setStyleSheet("background-color: #D9E9D8;");
-
-    rankingsListWidget = new QWidget();
-    rankingsListLayout = new QVBoxLayout(rankingsListWidget);
-    rankingsListLayout->setContentsMargins(10, 10, 10, 10);
-    rankingsListLayout->setSpacing(15);
-    rankingsListLayout->setAlignment(Qt::AlignTop);
-
-    rankingsScrollArea->setWidget(rankingsListWidget);
-    mainLayout->addWidget(rankingsScrollArea, 1);
-}
-
-void LeaderboardAll::loadMemberData()
-{
-    // Sample member data - in a real app this would come from a database or API
-    memberList.clear();
-    memberList.append({"Ashley", 1500});
-    memberList.append({"Mary", 1000});
-    memberList.append({"John", 950});
-    memberList.append({"Emma", 860});
-    memberList.append({"Johnathan", 700});
-    memberList.append({"Andrew", 630});
-    memberList.append({"Jessica", 600});
-    memberList.append({"Anna", 590});
-}
-
-void LeaderboardAll::loadClubData()
-{
-    // Sample club data - in a real app this would come from a database or API
-    clubList.clear();
-    clubList.append({"Badminton", 1500});
-    clubList.append({"Science", 1000});
-    clubList.append({"Art", 950});
-    clubList.append({"Dance Club", 860});
-    clubList.append({"Table Tennis", 700});
-    clubList.append({"Astrology", 630});
-    clubList.append({"Basketball", 600});
-    clubList.append({"Music", 590});
-}
-
-void LeaderboardAll::createSectionHeader(QVBoxLayout *layout, const QString &title)
-{
-    // Add "This Week" label
-    QLabel *weekLabel = new QLabel("This Week");
-    weekLabel->setStyleSheet("color: #5A5A5A; font-size: 14px;");
-    layout->addWidget(weekLabel);
-
-    // Add title label
-    QLabel *titleLabel = new QLabel(title);
+    // Page title
+    m_titleLabel = new QLabel("LeaderBoard");
     QFont titleFont;
     titleFont.setPointSize(18);
     titleFont.setBold(true);
-    titleLabel->setFont(titleFont);
-    layout->addWidget(titleLabel);
+    m_titleLabel->setFont(titleFont);
+    m_titleLabel->setAlignment(Qt::AlignCenter);
 
-    // Add some spacing after the title
-    layout->addSpacing(10);
+    headerLayout->addWidget(backButton, 0, Qt::AlignLeft);
+    headerLayout->addWidget(m_titleLabel, 1, Qt::AlignCenter);
+    headerLayout->addSpacing(32); // Balance the back button
+
+    // Tab switching widget
+    QWidget* tabWidget = new QWidget();
+    tabWidget->setStyleSheet("background-color: #d6e3c6;");
+    QHBoxLayout* tabLayout = new QHBoxLayout(tabWidget);
+    tabLayout->setContentsMargins(20, 10, 20, 10);
+
+    // Create the tab container with rounded corners
+    QWidget* tabContainer = new QWidget();
+    tabContainer->setStyleSheet(
+        "QWidget { background-color: white; border-radius: 25px; }"
+        );
+    tabContainer->setFixedHeight(50); // Set fixed height for the container
+
+    QHBoxLayout* tabContainerLayout = new QHBoxLayout(tabContainer);
+    tabContainerLayout->setContentsMargins(5, 5, 5, 5);
+    tabContainerLayout->setSpacing(0);
+
+    // Tab group for exclusive selection
+    m_tabGroup = new QButtonGroup(this);
+
+    // Club Members tab
+    m_clubMembersTab = new QRadioButton("Club Members");
+    m_clubMembersTab->setStyleSheet(
+        "QRadioButton { background-color: white; border-radius: 20px; padding: 8px 15px; font-weight: bold; font-size: 14px; }"
+        "QRadioButton:checked { background-color: #eaf5dd; }"
+        "QRadioButton::indicator { width: 0; height: 0; }"
+        );
+    m_clubMembersTab->setFixedHeight(40);
+    m_clubMembersTab->setChecked(true);
+
+    // Members tab
+    m_membersTab = new QRadioButton("All Members");
+    m_membersTab->setStyleSheet(
+        "QRadioButton { background-color: white; border-radius: 20px; padding: 8px 15px; font-weight: bold; font-size: 14px; }"
+        "QRadioButton:checked { background-color: #eaf5dd; }"
+        "QRadioButton::indicator { width: 0; height: 0; }"
+        );
+    m_membersTab->setFixedHeight(40);
+
+    // Clubs tab
+    m_clubsTab = new QRadioButton("All Clubs");
+    m_clubsTab->setStyleSheet(
+        "QRadioButton { background-color: white; border-radius: 20px; padding: 8px 15px; font-weight: bold; font-size: 14px; }"
+        "QRadioButton:checked { background-color: #eaf5dd; }"
+        "QRadioButton::indicator { width: 0; height: 0; }"
+        );
+    m_clubsTab->setFixedHeight(40);
+
+    m_tabGroup->addButton(m_clubMembersTab);
+    m_tabGroup->addButton(m_membersTab);
+    m_tabGroup->addButton(m_clubsTab);
+
+    tabContainerLayout->addWidget(m_clubMembersTab, 1);
+    tabContainerLayout->addWidget(m_membersTab, 1);
+    tabContainerLayout->addWidget(m_clubsTab, 1);
+
+    tabLayout->addWidget(tabContainer);
+
+    // Connect tab signals
+    connect(m_clubMembersTab, &QRadioButton::clicked, this, &LeaderboardAll::onClubMembersTabClicked);
+    connect(m_membersTab, &QRadioButton::clicked, this, &LeaderboardAll::onMembersTabClicked);
+    connect(m_clubsTab, &QRadioButton::clicked, this, &LeaderboardAll::onClubsTabClicked);
+
+    // Container for top 3 leaders
+    m_topThreeWidget = new QWidget();
+    m_topThreeWidget->setStyleSheet("background-color: #d6e3c6; border-bottom-left-radius: 30px; border-bottom-right-radius: 30px;");
+
+    // Scroll area for the list items below top 3
+    m_scrollArea = new QScrollArea();
+    m_scrollArea->setWidgetResizable(true);
+    m_scrollArea->setFrameShape(QFrame::NoFrame);
+    m_scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    m_scrollArea->setStyleSheet("background-color: transparent; border: none;");
+
+    // Container for the list items that will be inside the scroll area
+    QWidget* listContainer = new QWidget();
+    listContainer->setStyleSheet("background-color: #d6e3c6;");
+    m_leaderListLayout = new QVBoxLayout(listContainer);
+    m_leaderListLayout->setContentsMargins(10, 10, 10, 10);
+    m_leaderListLayout->setSpacing(20);
+
+    // Set the list container as the scroll area widget
+    m_scrollArea->setWidget(listContainer);
+
+    // Add all to main layout
+    m_mainLayout->addWidget(headerWidget);
+    m_mainLayout->addWidget(tabWidget);
+    m_mainLayout->addWidget(m_topThreeWidget);
+    m_mainLayout->addWidget(m_scrollArea, 1); // Scroll area takes remaining space
+
+    // Set fixed dimensions
+    setFixedWidth(350);
+    setFixedHeight(650);
 }
 
-void LeaderboardAll::updateMembersView()
+void LeaderboardAll::setupTopLeaders()
 {
-    // Clear existing widgets
-    QLayoutItem *item;
-    while ((item = topRankersLayout->takeAt(0)) != nullptr) {
+    // Clear previous content
+    if (m_topThreeWidget->layout()) {
+        QLayoutItem* item;
+        while ((item = m_topThreeWidget->layout()->takeAt(0)) != nullptr) {
+            delete item->widget();
+            delete item;
+        }
+        delete m_topThreeWidget->layout();
+    }
+
+    QHBoxLayout* topLeadersLayout = new QHBoxLayout(m_topThreeWidget);
+    topLeadersLayout->setContentsMargins(10, 20, 10, 30);
+    topLeadersLayout->setSpacing(0);
+
+    switch (m_currentTab) {
+    case ClubMembers: {
+        // Get club members with ranking from database
+        auto clubMembers = Database::getMembersWithRank(m_clubId);
+
+        if (clubMembers.size() >= 3) {
+            // Second place (left)
+            QString name2 = clubMembers[1].second.first;
+            int rank2 = clubMembers[1].second.second;
+            int userId2 = clubMembers[1].first;
+            QWidget* secondPlace = createLeaderItem(name2, userId2, true, 2);
+
+            // First place (center)
+            QString name1 = clubMembers[0].second.first;
+            int rank1 = clubMembers[0].second.second;
+            int userId1 = clubMembers[0].first;
+            QWidget* firstPlace = createLeaderItem(name1, userId1, true, 1);
+
+            // Third place (right)
+            QString name3 = clubMembers[2].second.first;
+            int rank3 = clubMembers[2].second.second;
+            int userId3 = clubMembers[2].first;
+            QWidget* thirdPlace = createLeaderItem(name3, userId3, true, 3);
+
+            topLeadersLayout->addWidget(secondPlace, 1, Qt::AlignBottom);
+            topLeadersLayout->addWidget(firstPlace, 1, Qt::AlignBottom);
+            topLeadersLayout->addWidget(thirdPlace, 1, Qt::AlignBottom);
+        } else {
+            // Handle case with fewer than 3 members
+            QLabel* placeholderLabel = new QLabel("Not enough members for ranking");
+            placeholderLabel->setAlignment(Qt::AlignCenter);
+            topLeadersLayout->addWidget(placeholderLabel);
+        }
+        break;
+    }
+    case Members: {
+        // Get top members from database
+        auto detailedMembers = Database::getDetailedMemberRankings();
+
+        if (detailedMembers.size() >= 3) {
+            // Second place (left)
+            QString name2 = detailedMembers[1].second.first;
+            int points2 = detailedMembers[1].second.second.first;
+            int userId2 = detailedMembers[1].first;  // Add this line
+            QWidget* secondPlace = createLeaderItem(name2, userId2, true, 2);  // Pass userId2 instead of points2
+
+            // First place (center)
+            QString name1 = detailedMembers[0].second.first;
+            int points1 = detailedMembers[0].second.second.first;
+            int userId1 = detailedMembers[0].first;  // Add this line
+            QWidget* firstPlace = createLeaderItem(name1, userId1, true, 1);  // Pass userId1 instead of points1
+
+            // Third place (right)
+            QString name3 = detailedMembers[2].second.first;
+            int points3 = detailedMembers[2].second.second.first;
+            int userId3 = detailedMembers[2].first;  // Add this line
+            QWidget* thirdPlace = createLeaderItem(name3, userId3, true, 3);  // Pass userId3 instead of points3
+
+            topLeadersLayout->addWidget(secondPlace, 1, Qt::AlignBottom);
+            topLeadersLayout->addWidget(firstPlace, 1, Qt::AlignBottom);
+            topLeadersLayout->addWidget(thirdPlace, 1, Qt::AlignBottom);
+        } else {
+            // Handle case with fewer than 3 members
+            QLabel* placeholderLabel = new QLabel("Not enough members for ranking");
+            placeholderLabel->setAlignment(Qt::AlignCenter);
+            topLeadersLayout->addWidget(placeholderLabel);
+        }
+        break;
+    }
+    case Clubs: {
+        // Get top clubs from database
+        auto detailedClubs = Database::getDetailedClubRankings();
+
+        if (detailedClubs.size() >= 3) {
+            // Second place (left)
+            QString name2 = detailedClubs[1].second.first;
+            int points2 = detailedClubs[1].second.second.first;
+            QWidget* secondPlace = createLeaderItem(name2, points2, true, 2);
+
+            // First place (center)
+            QString name1 = detailedClubs[0].second.first;
+            int points1 = detailedClubs[0].second.second.first;
+            QWidget* firstPlace = createLeaderItem(name1, points1, true, 1);
+
+            // Third place (right)
+            QString name3 = detailedClubs[2].second.first;
+            int points3 = detailedClubs[2].second.second.first;
+            QWidget* thirdPlace = createLeaderItem(name3, points3, true, 3);
+
+            topLeadersLayout->addWidget(secondPlace, 1, Qt::AlignBottom);
+            topLeadersLayout->addWidget(firstPlace, 1, Qt::AlignBottom);
+            topLeadersLayout->addWidget(thirdPlace, 1, Qt::AlignBottom);
+        } else {
+            // Handle case with fewer than 3 clubs
+            QLabel* placeholderLabel = new QLabel("Not enough clubs for ranking");
+            placeholderLabel->setAlignment(Qt::AlignCenter);
+            topLeadersLayout->addWidget(placeholderLabel);
+        }
+        break;
+    }
+    }
+}
+
+void LeaderboardAll::setupListItems()
+{
+    // Clear previous items
+    QLayoutItem* item;
+    while ((item = m_leaderListLayout->takeAt(0)) != nullptr) {
         delete item->widget();
         delete item;
     }
 
-    while ((item = rankingsListLayout->takeAt(0)) != nullptr) {
-        delete item->widget();
-        delete item;
+    switch (m_currentTab) {
+    case ClubMembers: {
+        // Get club members with ranking from database
+        auto clubMembers = Database::getMembersWithRank(m_clubId);
+
+        // Skip the top 3 members and add the rest
+        for (int i = 3; i < clubMembers.size(); i++) {
+            int userId = clubMembers[i].first;
+            QString name = clubMembers[i].second.first;
+            int rank = clubMembers[i].second.second;
+
+            // Get member points from users_list
+            QSqlQuery query;
+            query.prepare("SELECT points FROM users_list WHERE user_id = :userId");
+            query.bindValue(":userId", userId);
+
+            int points = 0;
+            if (query.exec() && query.next()) {
+                points = query.value(0).toInt();
+            }
+
+            // Create a list item with rank display
+            QWidget* itemWidget = new QWidget();
+            itemWidget->setStyleSheet("background-color: white; border-radius: 15px;");
+
+            QHBoxLayout* rowLayout = new QHBoxLayout(itemWidget);
+            rowLayout->setContentsMargins(10, 10, 10, 10);
+            rowLayout->setSpacing(10);
+
+            // Rank number
+            QLabel* rankLabel = new QLabel(QString::number(rank) + ".");
+            QFont rankFont;
+            rankFont.setPointSize(14);
+            rankFont.setBold(true);
+            rankLabel->setFont(rankFont);
+            rankLabel->setFixedWidth(30);
+            rowLayout->addWidget(rankLabel);
+
+            // Profile picture - try to load from database first
+            QLabel* profilePic = new QLabel();
+            profilePic->setFixedSize(40, 40);
+
+            QPixmap userPixmap;
+            bool imageLoaded = false;
+
+            // Try to load user profile from database
+            query.prepare("SELECT profile_photo FROM users_list WHERE user_id = :userId");
+            query.bindValue(":userId", userId);
+
+            if (query.exec() && query.next()) {
+                QByteArray photoData = query.value(0).toByteArray();
+                if (!photoData.isEmpty()) {
+                    if (userPixmap.loadFromData(photoData)) {
+                        imageLoaded = true;
+                    }
+                }
+            }
+
+            // Fallback to default user image if needed
+            if (!imageLoaded) {
+                userPixmap.load(":/images/resources/user.png");
+                if (userPixmap.isNull()) {
+                    // Create a default user icon
+                    userPixmap = QPixmap(40, 40);
+                    userPixmap.fill(Qt::white);
+                    QPainter painter(&userPixmap);
+                    painter.setPen(QPen(Qt::gray, 2));
+                    painter.setBrush(Qt::lightGray);
+                    painter.drawEllipse(5, 5, 30, 30);
+                    painter.drawEllipse(15, 10, 10, 10); // Head
+                    painter.drawRect(12, 22, 16, 13); // Body
+                    painter.end();
+                }
+            }
+
+            profilePic->setPixmap(userPixmap.scaled(40, 40, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+            profilePic->setStyleSheet("border-radius: 20px; background-color: white;");
+            rowLayout->addWidget(profilePic);
+
+            // Name with ID
+            QLabel* nameLabel = new QLabel(name + " (" + QString::number(userId) + ")");
+            QFont nameFont;
+            nameFont.setPointSize(12);
+            nameLabel->setFont(nameFont);
+            rowLayout->addWidget(nameLabel, 1);
+
+            // Points
+            QLabel* pointsLabel = new QLabel(QString::number(points));
+            QFont pointsFont;
+            pointsFont.setPointSize(14);
+            pointsFont.setBold(true);
+            pointsLabel->setFont(pointsFont);
+            rowLayout->addWidget(pointsLabel);
+
+            m_leaderListLayout->addWidget(itemWidget);
+        }
+        break;
+    }
+    case Members: {
+        // Get member rankings from database
+        auto detailedMembers = Database::getDetailedMemberRankings();
+
+        // Skip the top 3 members and add the rest
+        for (int i = 3; i < detailedMembers.size(); i++) {
+            int userId = detailedMembers[i].first;
+            QString name = detailedMembers[i].second.first;
+            int points = detailedMembers[i].second.second.first;
+            int rank = detailedMembers[i].second.second.second;
+
+            // Create a list item with rank display
+            QWidget* itemWidget = new QWidget();
+            itemWidget->setStyleSheet("background-color: white; border-radius: 15px;");
+
+            QHBoxLayout* rowLayout = new QHBoxLayout(itemWidget);
+            rowLayout->setContentsMargins(10, 10, 10, 10);
+            rowLayout->setSpacing(10);
+
+            // Rank number
+            QLabel* rankLabel = new QLabel(QString::number(rank) + ".");
+            QFont rankFont;
+            rankFont.setPointSize(14);
+            rankFont.setBold(true);
+            rankLabel->setFont(rankFont);
+            rankLabel->setFixedWidth(30);
+            rowLayout->addWidget(rankLabel);
+
+            // Profile picture - try to load from database first
+            QLabel* profilePic = new QLabel();
+            profilePic->setFixedSize(40, 40);
+
+            QPixmap userPixmap;
+            bool imageLoaded = false;
+
+            // Try to load user profile from database
+            QSqlQuery query;
+            query.prepare("SELECT profile_photo FROM users_list WHERE user_id = :userId");
+            query.bindValue(":userId", userId);
+
+            if (query.exec() && query.next()) {
+                QByteArray photoData = query.value(0).toByteArray();
+                if (!photoData.isEmpty()) {
+                    if (userPixmap.loadFromData(photoData)) {
+                        imageLoaded = true;
+                    }
+                }
+            }
+
+            // Fallback to default user image if needed
+            if (!imageLoaded) {
+                userPixmap.load(":/images/resources/user.png");
+                if (userPixmap.isNull()) {
+                    // Create a default user icon
+                    userPixmap = QPixmap(40, 40);
+                    userPixmap.fill(Qt::white);
+                    QPainter painter(&userPixmap);
+                    painter.setPen(QPen(Qt::gray, 2));
+                    painter.setBrush(Qt::lightGray);
+                    painter.drawEllipse(5, 5, 30, 30);
+                    painter.drawEllipse(15, 10, 10, 10); // Head
+                    painter.drawRect(12, 22, 16, 13); // Body
+                    painter.end();
+                }
+            }
+
+            profilePic->setPixmap(userPixmap.scaled(40, 40, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+            profilePic->setStyleSheet("border-radius: 20px; background-color: white;");
+            rowLayout->addWidget(profilePic);
+
+            // Name with ID
+            QLabel* nameLabel = new QLabel(name + " (" + QString::number(userId) + ")");
+            QFont nameFont;
+            nameFont.setPointSize(12);
+            nameLabel->setFont(nameFont);
+            rowLayout->addWidget(nameLabel, 1);
+
+            // Points
+            QLabel* pointsLabel = new QLabel(QString::number(points));
+            QFont pointsFont;
+            pointsFont.setPointSize(14);
+            pointsFont.setBold(true);
+            pointsLabel->setFont(pointsFont);
+            rowLayout->addWidget(pointsLabel);
+
+            m_leaderListLayout->addWidget(itemWidget);
+        }
+        break;
+    }
+    case Clubs: {
+        // Get club rankings from database
+        auto detailedClubs = Database::getDetailedClubRankings();
+
+        // Skip the top 3 clubs and add the rest
+        for (int i = 3; i < detailedClubs.size(); i++) {
+            int clubId = detailedClubs[i].first;
+            QString name = detailedClubs[i].second.first;
+            int points = detailedClubs[i].second.second.first;
+            int rank = detailedClubs[i].second.second.second;
+
+            // Create a list item with rank display
+            QWidget* itemWidget = new QWidget();
+            itemWidget->setStyleSheet("background-color: white; border-radius: 15px;");
+
+            QHBoxLayout* rowLayout = new QHBoxLayout(itemWidget);
+            rowLayout->setContentsMargins(10, 10, 10, 10);
+            rowLayout->setSpacing(10);
+
+            // Rank number
+            QLabel* rankLabel = new QLabel(QString::number(rank) + ".");
+            QFont rankFont;
+            rankFont.setPointSize(14);
+            rankFont.setBold(true);
+            rankLabel->setFont(rankFont);
+            rankLabel->setFixedWidth(30);
+            rowLayout->addWidget(rankLabel);
+
+            // Club picture - try to load from database first
+            QLabel* clubPic = new QLabel();
+            clubPic->setFixedSize(40, 40);
+
+            QPixmap clubPixmap;
+            bool imageLoaded = false;
+
+            // Try to load club image from database
+            QSqlQuery query;
+            query.prepare("SELECT club_photo FROM clubs_list WHERE club_id = :clubId");
+            query.bindValue(":clubId", clubId);
+
+            if (query.exec() && query.next()) {
+                QByteArray photoData = query.value(0).toByteArray();
+                if (!photoData.isEmpty()) {
+                    if (clubPixmap.loadFromData(photoData)) {
+                        imageLoaded = true;
+                    }
+                }
+            }
+
+            // Fallback to default club image if needed
+            if (!imageLoaded) {
+                clubPixmap.load(":/images/resources/club.png");
+                if (clubPixmap.isNull()) {
+                    // Create a default club icon
+                    clubPixmap = QPixmap(40, 40);
+                    clubPixmap.fill(Qt::white);
+                    QPainter painter(&clubPixmap);
+                    painter.setPen(QPen(Qt::gray, 2));
+                    painter.setBrush(Qt::lightGray);
+                    painter.drawRoundedRect(5, 5, 30, 30, 5, 5);
+                    painter.drawLine(10, 15, 30, 15);
+                    painter.drawLine(10, 22, 30, 22);
+                    painter.drawLine(10, 29, 30, 29);
+                    painter.end();
+                }
+            }
+
+            clubPic->setPixmap(clubPixmap.scaled(40, 40, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+            rowLayout->addWidget(clubPic);
+
+            // Name with ID
+            QLabel* nameLabel = new QLabel(name + " (" + QString::number(clubId) + ")");
+            QFont nameFont;
+            nameFont.setPointSize(12);
+            nameLabel->setFont(nameFont);
+            rowLayout->addWidget(nameLabel, 1);
+
+            // Points
+            QLabel* pointsLabel = new QLabel(QString::number(points));
+            QFont pointsFont;
+            pointsFont.setPointSize(14);
+            pointsFont.setBold(true);
+            pointsLabel->setFont(pointsFont);
+            rowLayout->addWidget(pointsLabel);
+
+            m_leaderListLayout->addWidget(itemWidget);
+        }
+        break;
+    }
     }
 
-    // Add top 3 members with medals
-    if (memberList.size() > 0) {
-        // Second place (displayed on left)
-        if (memberList.size() > 1) {
-            topRankersLayout->addWidget(createTopRankerWidget("silver", memberList[1].name, memberList[1].score));
+    // Add stretch to push items to the top
+    m_leaderListLayout->addStretch(1);
+}
+
+QWidget* LeaderboardAll::createLeaderItem(const QString& name, int idOrPoints, bool isTopThree, int rank)
+{
+    QWidget* itemWidget = new QWidget();
+
+    if (isTopThree) {
+        itemWidget->setStyleSheet("background-color: transparent;");
+
+        QVBoxLayout* itemLayout = new QVBoxLayout(itemWidget);
+        itemLayout->setContentsMargins(5, 5, 5, 5);
+        itemLayout->setSpacing(5);
+        itemLayout->setAlignment(Qt::AlignCenter);
+
+        // Create medal widget based on rank
+        QLabel* medalLabel = new QLabel();
+
+        // Use PNG images for medals with error checking
+        QPixmap medalPixmap;
+        if (rank == 1) {
+            medalPixmap.load(":/images/resources/gold_medal.png");
+            if (medalPixmap.isNull()) {
+                qDebug() << "Failed to load gold medal image";
+                // Use fallback - create a gold-colored circle
+                medalPixmap = QPixmap(40, 40);
+                medalPixmap.fill(Qt::transparent);
+                QPainter painter(&medalPixmap);
+                painter.setRenderHint(QPainter::Antialiasing);
+                painter.setBrush(QColor(255, 215, 0)); // Gold color
+                painter.setPen(Qt::NoPen);
+                painter.drawEllipse(0, 0, 40, 40);
+                painter.end();
+            }
+        } else if (rank == 2) {
+            medalPixmap.load(":/images/resources/silver_medal.png");
+            if (medalPixmap.isNull()) {
+                qDebug() << "Failed to load silver medal image";
+                // Use fallback - create a silver-colored circle
+                medalPixmap = QPixmap(40, 40);
+                medalPixmap.fill(Qt::transparent);
+                QPainter painter(&medalPixmap);
+                painter.setRenderHint(QPainter::Antialiasing);
+                painter.setBrush(QColor(192, 192, 192)); // Silver color
+                painter.setPen(Qt::NoPen);
+                painter.drawEllipse(0, 0, 40, 40);
+                painter.end();
+            }
+        } else {
+            medalPixmap.load(":/images/resources/bronze_medal.png");
+            if (medalPixmap.isNull()) {
+                qDebug() << "Failed to load bronze medal image";
+                // Use fallback - create a bronze-colored circle
+                medalPixmap = QPixmap(40, 40);
+                medalPixmap.fill(Qt::transparent);
+                QPainter painter(&medalPixmap);
+                painter.setRenderHint(QPainter::Antialiasing);
+                painter.setBrush(QColor(205, 127, 50)); // Bronze color
+                painter.setPen(Qt::NoPen);
+                painter.drawEllipse(0, 0, 40, 40);
+                painter.end();
+            }
         }
 
-        // First place (displayed in center, larger)
-        topRankersLayout->addWidget(createTopRankerWidget("gold", memberList[0].name, memberList[0].score));
+        medalLabel->setPixmap(medalPixmap.scaled(40, 40, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        medalLabel->setFixedSize(40, 40);
+        itemLayout->addWidget(medalLabel, 0, Qt::AlignCenter);
 
-        // Third place (displayed on right)
-        if (memberList.size() > 2) {
-            topRankersLayout->addWidget(createTopRankerWidget("bronze", memberList[2].name, memberList[2].score));
+        // Profile or club picture - load from database if available
+        QLabel* profilePic = new QLabel();
+        profilePic->setFixedSize(80, 80);
+
+        // Try to load profile/club image from database
+        QPixmap profilePixmap;
+        bool imageLoaded = false;
+        int points = 0;
+
+        if (m_currentTab == ClubMembers || m_currentTab == Members) {
+            // For ClubMembers, idOrPoints is userId
+            int userId = idOrPoints;
+
+            // Try to load user profile from database
+            QSqlQuery query;
+            query.prepare("SELECT profile_photo, points FROM users_list WHERE user_id = :userId");
+            query.bindValue(":userId", userId);
+
+            if (query.exec() && query.next()) {
+                QByteArray photoData = query.value(0).toByteArray();
+                points = query.value(1).toInt();
+
+                if (!photoData.isEmpty()) {
+                    if (profilePixmap.loadFromData(photoData)) {
+                        imageLoaded = true;
+                    }
+                }
+            }
+
+            // Fallback to default user image if needed
+            if (!imageLoaded) {
+                profilePixmap.load(":/images/resources/user.png");
+                if (profilePixmap.isNull()) {
+                    qDebug() << "Failed to load user image";
+                    // Create a default user icon
+                    profilePixmap = QPixmap(80, 80);
+                    profilePixmap.fill(Qt::white);
+                    QPainter painter(&profilePixmap);
+                    painter.setPen(QPen(Qt::gray, 2));
+                    painter.setBrush(Qt::lightGray);
+                    painter.drawEllipse(10, 10, 60, 60);
+                    painter.drawEllipse(30, 20, 20, 20); // Head
+                    painter.drawRect(25, 45, 30, 25); // Body
+                    painter.end();
+                }
+            }
+        } else {
+            // For Clubs tab, idOrPoints is points directly
+            points = idOrPoints;
+
+            // Try to load club image from database
+            QSqlQuery query;
+            query.prepare("SELECT club_photo FROM clubs_list WHERE club_name = :name");
+            query.bindValue(":name", name);
+
+            if (query.exec() && query.next()) {
+                QByteArray photoData = query.value(0).toByteArray();
+                if (!photoData.isEmpty()) {
+                    if (profilePixmap.loadFromData(photoData)) {
+                        imageLoaded = true;
+                    }
+                }
+            }
+
+            // Fallback to default club image if needed
+            if (!imageLoaded) {
+                profilePixmap.load(":/images/resources/club.png");
+                if (profilePixmap.isNull()) {
+                    qDebug() << "Failed to load club image";
+                    // Create a default club icon
+                    profilePixmap = QPixmap(80, 80);
+                    profilePixmap.fill(Qt::white);
+                    QPainter painter(&profilePixmap);
+                    painter.setPen(QPen(Qt::gray, 2));
+                    painter.setBrush(Qt::lightGray);
+                    painter.drawRoundedRect(10, 10, 60, 60, 10, 10);
+                    painter.drawLine(20, 30, 60, 30);
+                    painter.drawLine(20, 45, 60, 45);
+                    painter.drawLine(20, 60, 60, 60);
+                    painter.end();
+                }
+            }
         }
-    }
 
-    // Add remaining members to scrollable list
-    for (int i = 3; i < memberList.size(); i++) {
-        rankingsListLayout->addWidget(createRankListItemWidget(memberList[i].name, memberList[i].score));
-    }
-}
+        profilePic->setPixmap(profilePixmap.scaled(80, 80, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        profilePic->setStyleSheet("border-radius: 40px; background-color: white;");
+        itemLayout->addWidget(profilePic, 0, Qt::AlignCenter);
 
-void LeaderboardAll::updateClubsView()
-{
-    // Clear existing widgets
-    QLayoutItem *item;
-    while ((item = topRankersLayout->takeAt(0)) != nullptr) {
-        delete item->widget();
-        delete item;
-    }
-
-    while ((item = rankingsListLayout->takeAt(0)) != nullptr) {
-        delete item->widget();
-        delete item;
-    }
-
-    // Add top 3 clubs with medals
-    if (clubList.size() > 0) {
-        // Second place (displayed on left)
-        if (clubList.size() > 1) {
-            topRankersLayout->addWidget(createTopRankerWidget("silver", clubList[1].name, clubList[1].score));
-        }
-
-        // First place (displayed in center, larger)
-        topRankersLayout->addWidget(createTopRankerWidget("gold", clubList[0].name, clubList[0].score));
-
-        // Third place (displayed on right)
-        if (clubList.size() > 2) {
-            topRankersLayout->addWidget(createTopRankerWidget("bronze", clubList[2].name, clubList[2].score));
-        }
-    }
-
-    // Add remaining clubs to scrollable list
-    for (int i = 3; i < clubList.size(); i++) {
-        rankingsListLayout->addWidget(createRankListItemWidget(clubList[i].name, clubList[i].score));
-    }
-}
-
-void LeaderboardAll::updateAllView()
-{
-    // Hide top rankers widget for All tab
-    topRankersWidget->hide();
-
-    // Clear existing widgets in scrollable area
-    QLayoutItem *item;
-    while ((item = rankingsListLayout->takeAt(0)) != nullptr) {
-        delete item->widget();
-        delete item;
-    }
-
-    // Create section for TOP 3 Clubs
-    createSectionHeader(rankingsListLayout, "TOP 3 Clubs");
-
-    // Create individual widgets for each club (instead of one widget containing all clubs)
-    if (clubList.size() > 0) {
-        QWidget *clubWidget = new QWidget();
-        clubWidget->setStyleSheet("background-color: #FFFFFF; border-radius: 15px;");
-        QHBoxLayout *clubLayout = new QHBoxLayout(clubWidget);
-        clubLayout->setContentsMargins(10, 10, 10, 10);
-
-        QLabel *medalLabel = createMedalLabel("gold");
-        clubLayout->addWidget(medalLabel);
-
-        QLabel *nameLabel = new QLabel(clubList[0].name + " Club");
+        // Name
+        QLabel* nameLabel = new QLabel(name);
         QFont nameFont;
-        nameFont.setPointSize(16);
+        nameFont.setPointSize(12);
         nameFont.setBold(true);
         nameLabel->setFont(nameFont);
-        clubLayout->addWidget(nameLabel);
+        nameLabel->setAlignment(Qt::AlignCenter);
+        nameLabel->setWordWrap(true);
+        nameLabel->setStyleSheet("color: #333;");
+        itemLayout->addWidget(nameLabel);
 
-        clubLayout->addStretch();
+        // Points
+        QLabel* pointsLabel = new QLabel(QString::number(points) + " pts");
+        QFont pointsFont;
+        pointsFont.setPointSize(14);
+        pointsFont.setBold(true);
+        pointsLabel->setFont(pointsFont);
+        pointsLabel->setAlignment(Qt::AlignCenter);
+        pointsLabel->setStyleSheet("color: #4a6741;"); // Green color to match the theme
+        itemLayout->addWidget(pointsLabel);
 
-        rankingsListLayout->addWidget(clubWidget);
-    }
-
-    if (clubList.size() > 1) {
-        QWidget *clubWidget = new QWidget();
-        clubWidget->setStyleSheet("background-color: #FFFFFF; border-radius: 15px;");
-        QHBoxLayout *clubLayout = new QHBoxLayout(clubWidget);
-        clubLayout->setContentsMargins(10, 10, 10, 10);
-
-        QLabel *medalLabel = createMedalLabel("silver");
-        clubLayout->addWidget(medalLabel);
-
-        QLabel *nameLabel = new QLabel(clubList[1].name + " Club");
-        QFont nameFont;
-        nameFont.setPointSize(16);
-        nameFont.setBold(true);
-        nameLabel->setFont(nameFont);
-        clubLayout->addWidget(nameLabel);
-
-        clubLayout->addStretch();
-
-        rankingsListLayout->addWidget(clubWidget);
-    }
-
-    if (clubList.size() > 2) {
-        QWidget *clubWidget = new QWidget();
-        clubWidget->setStyleSheet("background-color: #FFFFFF; border-radius: 15px;");
-        QHBoxLayout *clubLayout = new QHBoxLayout(clubWidget);
-        clubLayout->setContentsMargins(10, 10, 10, 10);
-
-        QLabel *medalLabel = createMedalLabel("bronze");
-        clubLayout->addWidget(medalLabel);
-
-        QLabel *nameLabel = new QLabel(clubList[2].name + " Club");
-        QFont nameFont;
-        nameFont.setPointSize(16);
-        nameFont.setBold(true);
-        nameLabel->setFont(nameFont);
-        clubLayout->addWidget(nameLabel);
-
-        clubLayout->addStretch();
-
-        rankingsListLayout->addWidget(clubWidget);
-    }
-
-    // Add a spacer widget to create a gap between sections
-    QWidget *spacerWidget = new QWidget();
-    spacerWidget->setFixedHeight(20); // Original spacing
-    rankingsListLayout->addWidget(spacerWidget);
-
-    // Create section for TOP 3 Users
-    createSectionHeader(rankingsListLayout, "TOP 3 Users");
-
-    // Create individual widgets for each user (instead of one widget containing all users)
-    if (memberList.size() > 0) {
-        QWidget *userWidget = new QWidget();
-        userWidget->setStyleSheet("background-color: #FFFFFF; border-radius: 15px;");
-        QHBoxLayout *userLayout = new QHBoxLayout(userWidget);
-        userLayout->setContentsMargins(10, 10, 10, 10);
-
-        QLabel *medalLabel = createMedalLabel("gold");
-        userLayout->addWidget(medalLabel);
-
-        QLabel *nameLabel = new QLabel(memberList[0].name);
-        QFont nameFont;
-        nameFont.setPointSize(16);
-        nameFont.setBold(true);
-        nameLabel->setFont(nameFont);
-        userLayout->addWidget(nameLabel);
-
-        userLayout->addStretch();
-
-        rankingsListLayout->addWidget(userWidget);
-    }
-
-    if (memberList.size() > 1) {
-        QWidget *userWidget = new QWidget();
-        userWidget->setStyleSheet("background-color: #FFFFFF; border-radius: 15px;");
-        QHBoxLayout *userLayout = new QHBoxLayout(userWidget);
-        userLayout->setContentsMargins(10, 10, 10, 10);
-
-        QLabel *medalLabel = createMedalLabel("silver");
-        userLayout->addWidget(medalLabel);
-
-        QLabel *nameLabel = new QLabel(memberList[1].name);
-        QFont nameFont;
-        nameFont.setPointSize(16);
-        nameFont.setBold(true);
-        nameLabel->setFont(nameFont);
-        userLayout->addWidget(nameLabel);
-
-        userLayout->addStretch();
-
-        rankingsListLayout->addWidget(userWidget);
-    }
-
-    if (memberList.size() > 2) {
-        QWidget *userWidget = new QWidget();
-        userWidget->setStyleSheet("background-color: #FFFFFF; border-radius: 15px;");
-        QHBoxLayout *userLayout = new QHBoxLayout(userWidget);
-        userLayout->setContentsMargins(10, 10, 10, 10);
-
-        QLabel *medalLabel = createMedalLabel("bronze");
-        userLayout->addWidget(medalLabel);
-
-        QLabel *nameLabel = new QLabel(memberList[2].name);
-        QFont nameFont;
-        nameFont.setPointSize(16);
-        nameFont.setBold(true);
-        nameLabel->setFont(nameFont);
-        userLayout->addWidget(nameLabel);
-
-        userLayout->addStretch();
-
-        rankingsListLayout->addWidget(userWidget);
+        return itemWidget;
+    } else {
+        return nullptr;
     }
 }
 
-QWidget* LeaderboardAll::createTopUserWidget(const QString &medalType, const QString &name)
+void LeaderboardAll::clearLeaderboard()
 {
-    QWidget *widget = new QWidget();
-    QHBoxLayout *layout = new QHBoxLayout(widget);
-    layout->setContentsMargins(5, 5, 5, 5);
-
-    // Medal icon
-    QLabel *medalLabel = createMedalLabel(medalType);
-    layout->addWidget(medalLabel);
-
-    // User name
-    QLabel *nameLabel = new QLabel(name);
-    QFont nameFont;
-    nameFont.setPointSize(16);
-    nameFont.setBold(true);
-    nameLabel->setFont(nameFont);
-    layout->addWidget(nameLabel);
-
-    layout->addStretch();
-
-    return widget;
+    setupTopLeaders();
+    setupListItems();
 }
 
-QWidget* LeaderboardAll::createTopClubWidget(const QString &medalType, const QString &name)
+void LeaderboardAll::showClubMembersLeaderboard()
 {
-    QWidget *widget = new QWidget();
-    QHBoxLayout *layout = new QHBoxLayout(widget);
-    layout->setContentsMargins(5, 5, 5, 5);
-
-    // Medal icon
-    QLabel *medalLabel = createMedalLabel(medalType);
-    layout->addWidget(medalLabel);
-
-    // Club name
-    QLabel *nameLabel = new QLabel(name + " Club");
-    QFont nameFont;
-    nameFont.setPointSize(16);
-    nameFont.setBold(true);
-    nameLabel->setFont(nameFont);
-    layout->addWidget(nameLabel);
-
-    layout->addStretch();
-
-    return widget;
+    m_currentTab = ClubMembers;
+    m_titleLabel->setText("Club Members Leaderboard");
+    clearLeaderboard();
 }
 
-QWidget* LeaderboardAll::createTopRankerWidget(const QString &medalType, const QString &name, int score)
+void LeaderboardAll::showMembersLeaderboard()
 {
-    QWidget *rankerWidget = new QWidget();
-    QVBoxLayout *layout = new QVBoxLayout(rankerWidget);
-    layout->setAlignment(Qt::AlignCenter);
-    layout->setSpacing(5);
-
-    // Medal image
-    QLabel *medalLabel = createMedalLabel(medalType);
-    layout->addWidget(medalLabel, 0, Qt::AlignCenter);
-
-    // Avatar (circle with user icon)
-    QLabel *avatarLabel = new QLabel();
-    QPixmap avatarPixmap(":/resources/user.png");
-    if (avatarPixmap.isNull()) {
-        // Create a default circular avatar if image not found
-        avatarPixmap = QPixmap(60, 60);
-        avatarPixmap.fill(Qt::lightGray);
-    }
-    avatarPixmap = avatarPixmap.scaled(60, 60, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    avatarLabel->setPixmap(avatarPixmap);
-    avatarLabel->setFixedSize(60, 60);
-    avatarLabel->setStyleSheet("border-radius: 30px; background-color: lightgray;");
-
-    // Make center avatar larger if it's gold (first place)
-    if (medalType == "gold") {
-        avatarLabel->setFixedSize(80, 80);
-        avatarLabel->setStyleSheet("border-radius: 40px; background-color: lightgray;");
-    }
-
-    layout->addWidget(avatarLabel, 0, Qt::AlignCenter);
-
-    // Score
-    QLabel *scoreLabel = new QLabel(QString::number(score));
-    QFont scoreFont;
-    scoreFont.setPointSize(14);
-    scoreFont.setBold(true);
-    scoreLabel->setFont(scoreFont);
-    layout->addWidget(scoreLabel, 0, Qt::AlignCenter);
-
-    // Name
-    QLabel *nameLabel = new QLabel(name);
-    QFont nameFont;
-    nameFont.setPointSize(12);
-    nameLabel->setFont(nameFont);
-    layout->addWidget(nameLabel, 0, Qt::AlignCenter);
-
-    return rankerWidget;
+    m_currentTab = Members;
+    m_titleLabel->setText("All Members Leaderboard");
+    clearLeaderboard();
 }
 
-QWidget* LeaderboardAll::createRankListItemWidget(const QString &name, int score)
+void LeaderboardAll::showClubsLeaderboard()
 {
-    QWidget *listItemWidget = new QWidget();
-    QHBoxLayout *layout = new QHBoxLayout(listItemWidget);
-    layout->setContentsMargins(10, 5, 10, 5);
-
-    // Avatar
-    QLabel *avatarLabel = new QLabel();
-    QPixmap avatarPixmap(":/resources/user_avatar.png");
-    if (avatarPixmap.isNull()) {
-        // Create a default circular avatar if image not found
-        avatarPixmap = QPixmap(40, 40);
-        avatarPixmap.fill(Qt::lightGray);
-    }
-    avatarPixmap = avatarPixmap.scaled(40, 40, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    avatarLabel->setPixmap(avatarPixmap);
-    avatarLabel->setFixedSize(40, 40);
-    avatarLabel->setStyleSheet("border-radius: 20px; background-color: lightgray;");
-
-    // Name
-    QLabel *nameLabel = new QLabel(name);
-    QFont nameFont;
-    nameFont.setPointSize(12);
-    nameFont.setBold(true);
-    nameLabel->setFont(nameFont);
-
-    // Score
-    QLabel *scoreLabel = new QLabel(QString::number(score));
-    QFont scoreFont;
-    scoreFont.setPointSize(12);
-    scoreFont.setBold(true);
-    scoreLabel->setFont(scoreFont);
-
-    layout->addWidget(avatarLabel);
-    layout->addWidget(nameLabel);
-    layout->addStretch();
-    layout->addWidget(scoreLabel);
-
-    return listItemWidget;
+    m_currentTab = Clubs;
+    m_titleLabel->setText("Clubs Leaderboard");
+    clearLeaderboard();
 }
 
-void LeaderboardAll::onBackButtonClicked()
+void LeaderboardAll::onClubMembersTabClicked()
 {
-    qDebug() << "Back button clicked in LeaderboardAll";
-    emit navigateBack();
-}
-
-void LeaderboardAll::onAllTabClicked()
-{
-    if (currentTab != ALL_TAB) {
-        allTabButton->setChecked(true);
-        membersTabButton->setChecked(false);
-        clubsTabButton->setChecked(false);
-        updateTabButtonStyles();
-
-        currentTab = ALL_TAB;
-        updateAllView();
-
-        qDebug() << "All tab selected";
-    }
+    showClubMembersLeaderboard();
 }
 
 void LeaderboardAll::onMembersTabClicked()
 {
-    if (currentTab != MEMBERS_TAB) {
-        allTabButton->setChecked(false);
-        membersTabButton->setChecked(true);
-        clubsTabButton->setChecked(false);
-        updateTabButtonStyles();
-
-        // Show top rankers widget if it was hidden
-        topRankersWidget->show();
-
-        currentTab = MEMBERS_TAB;
-        updateMembersView();
-
-        qDebug() << "Members tab selected";
-    }
+    showMembersLeaderboard();
 }
 
 void LeaderboardAll::onClubsTabClicked()
 {
-    if (currentTab != CLUBS_TAB) {
-        allTabButton->setChecked(false);
-        membersTabButton->setChecked(false);
-        clubsTabButton->setChecked(true);
-        updateTabButtonStyles();
-
-        // Show top rankers widget if it was hidden
-        topRankersWidget->show();
-
-        currentTab = CLUBS_TAB;
-        updateClubsView();
-
-        qDebug() << "Clubs tab selected";
-    }
-}
-
-void LeaderboardAll::updateTabButtonStyles()
-{
-    // Default style for unselected tabs
-    QString unselectedStyle = "QPushButton { background-color: white; border-radius: 18px; padding: 8px 15px; }";
-
-    // Style for selected tab
-    QString selectedStyle = "QPushButton { background-color: #D9E9D8; border-radius: 18px; padding: 8px 15px; }";
-
-    // Apply styles based on checked state
-    allTabButton->setStyleSheet(allTabButton->isChecked() ? selectedStyle : unselectedStyle);
-    membersTabButton->setStyleSheet(membersTabButton->isChecked() ? selectedStyle : unselectedStyle);
-    clubsTabButton->setStyleSheet(clubsTabButton->isChecked() ? selectedStyle : unselectedStyle);
-}
-
-QLabel* LeaderboardAll::createMedalLabel(const QString &color)
-{
-    QLabel* medalLabel = new QLabel();
-
-    // Use image paths based on the referenced code
-    QString imagePath;
-    if (color == "gold") {
-        imagePath = ":/resources/gold_medal.png";
-    } else if (color == "silver") {
-        imagePath = ":/resources/silver_medal.png";
-    } else if (color == "bronze") {
-        imagePath = ":/resources/bronze_medal.png";
-    }
-
-    QPixmap pixmap(imagePath);
-    if (!pixmap.isNull()) {
-        pixmap = pixmap.scaled(30, 30, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-        medalLabel->setPixmap(pixmap);
-    } else {
-        // Fallback if image isn't found
-        medalLabel->setText(color);
-    }
-
-    medalLabel->setFixedSize(30, 30);
-    return medalLabel;
+    showClubsLeaderboard();
 }
