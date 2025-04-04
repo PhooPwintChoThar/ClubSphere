@@ -46,6 +46,7 @@ ClubCard::ClubCard(int clubId, const QString& clubName, int memberCount, const Q
     m_clubImageLabel->setFixedSize(80, 80);
     m_clubImageLabel->setStyleSheet("background-color: #E0E0E0;");
 
+
     // Club info
     QVBoxLayout* infoLayout = new QVBoxLayout();
     infoLayout->setSpacing(3);
@@ -57,12 +58,20 @@ ClubCard::ClubCard(int clubId, const QString& clubName, int memberCount, const Q
 
     m_memberCountLabel = new QLabel(QString::number(memberCount) + " members", this);
     m_memberCountLabel->setFont(QFont("Arial", 11));
+    int clubRank = Database::calculateClubRanking(clubId);;
+
+
+    // Add ranking label
+    m_rankingLabel = new QLabel("Rank: #" + QString::number(clubRank), this);
+    m_rankingLabel->setFont(QFont("Arial", 13));
+
 
     m_leaderLabel = new QLabel("Leader: " + leaderName, this);
     m_leaderLabel->setFont(QFont("Arial", 11));
 
     infoLayout->addWidget(m_clubNameLabel);
     infoLayout->addWidget(m_memberCountLabel);
+    infoLayout->addWidget(m_rankingLabel);
     infoLayout->addWidget(m_leaderLabel);
 
     // Join button
