@@ -58,7 +58,7 @@ private:
     QLabel* m_dateTimeLabel;
     QLabel* m_descriptionLabel;
     QLabel* m_eventImageLabel;  // Now can be nullptr if no image
-    QPushButton* m_goingButton;
+    QLabel* m_goingLabel;
     QLabel* m_goingCountLabel;
     QPushButton* m_deleteButton;
     int m_eventId;
@@ -75,7 +75,7 @@ public:
 signals:
     void showGroupChat(int clubId, int currentUserId);
     void showNotifications();
-    void showLeaderboard();
+    void showLeaderboard(int clubId);
 
 private slots:
     void createNewEvent();
