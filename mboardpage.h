@@ -1,4 +1,3 @@
-// mboardpage.h
 #ifndef MBOARDPAGE_H
 #define MBOARDPAGE_H
 
@@ -7,9 +6,9 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
-#include <QScrollArea>
 #include <QButtonGroup>
-#include <QRadioButton>
+#include <QScrollArea>
+#include<QRadioButton>
 
 class MBoardPage : public QWidget
 {
@@ -27,42 +26,34 @@ signals:
     void navigateToBoard();
 
 private slots:
+    void onMembersTabClicked();
+    void onClubsTabClicked();
     void homeClicked();
     void clubClicked();
     void eventClicked();
     void profileClicked();
     void boardClicked();
-    void onMembersTabClicked();
-    void onClubsTabClicked();
 
 private:
     void setupUI();
     void setupTopLeaders();
     void setupListItems();
+    QWidget* createLeaderItem(const QString& name, int points, bool isTopThree = false, int rank = 0);
     void clearLeaderboard();
     void showMembersLeaderboard();
     void showClubsLeaderboard();
-    QWidget* createLeaderItem(const QString& name, int points, bool isTopThree = false, int rank = 0);
 
-    // UI Components
+    // UI components
     QVBoxLayout* m_mainLayout;
     QLabel* m_titleLabel;
-    QScrollArea* m_scrollArea;
-    QWidget* m_scrollContent;
-    QVBoxLayout* m_contentLayout;
-    QWidget* m_topThreeWidget;
-    QVBoxLayout* m_leaderListLayout;
-
-    // Tab switching
     QButtonGroup* m_tabGroup;
     QRadioButton* m_membersTab;
     QRadioButton* m_clubsTab;
+    QWidget* m_topThreeWidget;
+    QScrollArea* m_scrollArea;
+    QVBoxLayout* m_leaderListLayout;
 
-    // Bottom navigation
-    QWidget* m_bottomNavBar;
-    QHBoxLayout* m_bottomNavLayout;
-
-    // Current view state
+    // State tracking
     bool m_showingMembers;
 };
 
