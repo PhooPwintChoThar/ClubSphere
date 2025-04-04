@@ -360,6 +360,7 @@ void AdminClub::createClubCard(const Club& club)
             // Delete club from database
             QSqlQuery query;
             query.prepare("DELETE FROM clubs_list WHERE club_id = :id");
+            query.prepare("DELETE FROM clubleaders_list WHERE assigned_club_id = :id");
             query.bindValue(":id", clubId);
 
             if (query.exec()) {
