@@ -41,6 +41,7 @@ private:
     QLabel* m_clubImageLabel;
     QLabel* m_clubNameLabel;
     QLabel* m_memberCountLabel;
+    QLabel* m_rankingLabel;
     QLabel* m_leaderLabel;
     QPushButton* m_joinButton;
 
