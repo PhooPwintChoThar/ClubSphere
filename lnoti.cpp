@@ -11,6 +11,7 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QPainterPath>
+#include <QStyle>
 #include "database.h" // Include Database class for helper functions
 
 // Helper function to create a circular user avatar
@@ -138,16 +139,22 @@ void LNoti::setupNotificationsArea()
     m_scrollArea->setFrameShape(QFrame::NoFrame);
     m_scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     m_scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    m_scrollArea->setMinimumHeight(480);
+
+    // Remove minimum height constraint that was causing issues
+    // m_scrollArea->setMinimumHeight(480); // REMOVED THIS LINE
 
     // Create container widget for notifications
     m_scrollContent = new QWidget(m_scrollArea);
-    m_scrollContent->setStyleSheet("background-color: #D9E9D8; border-radius: 12px;");
+    m_scrollContent->setStyleSheet(
+        "background-color: #D9E9D8;"
+        "border-radius: 12px;"
+        );
+    m_scrollContent->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding); // ADDED
 
     // Create layout for notifications
     m_notificationsLayout = new QVBoxLayout(m_scrollContent);
-    m_notificationsLayout->setContentsMargins(15, 15, 15, 15);
-    m_notificationsLayout->setSpacing(10);
+    m_notificationsLayout->setContentsMargins(5, 5, 5, 10);  // Tight margins
+    m_notificationsLayout->setSpacing(4);  // Reduced spacing
 
     // Add a title to the notifications section
     QLabel *notificationsLabel = new QLabel("Club Notifications", m_scrollContent);
@@ -156,16 +163,25 @@ void LNoti::setupNotificationsArea()
     notificationsFont.setPointSize(14);
     notificationsLabel->setFont(notificationsFont);
     notificationsLabel->setAlignment(Qt::AlignCenter);
+    notificationsLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed); // ADDED
     m_notificationsLayout->addWidget(notificationsLabel);
+
+    // Add stretch to push content to top
+    m_notificationsLayout->addStretch(1); // ADDED
 
     // Set the container as the widget for the scroll area
     m_scrollArea->setWidget(m_scrollContent);
+    m_scrollArea->setWidgetResizable(true); // ENSURE THIS IS SET
 
-    // Add scroll area to main layout with proper margins
+    // Add scroll area to main layout
     QHBoxLayout *scrollAreaLayout = new QHBoxLayout();
     scrollAreaLayout->setContentsMargins(10, 0, 10, 0);
     scrollAreaLayout->addWidget(m_scrollArea);
-    m_mainLayout->addLayout(scrollAreaLayout);
+    m_mainLayout->addLayout(scrollAreaLayout, 1); // ADDED stretch factor
+
+    // Force immediate update
+    m_scrollContent->adjustSize();
+    updateGeometry();
 }
 
 void LNoti::loadNotificationsFromDatabase()
@@ -276,26 +292,35 @@ QWidget* LNoti::createHeaderWidget()
 
 QWidget* LNoti::createNotificationWidget(const Notification &notification, int index)
 {
-    // User info layout
+    // Main layout for notifications
     QHBoxLayout *notificationLayout = new QHBoxLayout();
-    notificationLayout->setContentsMargins(5, 10, 5, 10);
+    notificationLayout->setContentsMargins(10, 8, 10, 8);  // Increased side margins
+    notificationLayout->setSpacing(12);  // Slightly more spacing between elements
 
-    // User icon - MODIFIED TO USE PROFILE PHOTO
+    // User icon
     QLabel *userIcon = new QLabel();
     userIcon->setFixedSize(40, 40);
     userIcon->setStyleSheet("background-color: transparent; border-radius: 20px;");
-
-    // Get user profile photo
     QPixmap userPhoto = getUserProfilePhoto(notification.userId);
     userIcon->setPixmap(userPhoto);
 
-    // User details
+    // Notification details
     QVBoxLayout *notificationDetailsLayout = new QVBoxLayout();
-    notificationDetailsLayout->setSpacing(3);
+    notificationDetailsLayout->setSpacing(4);
+    notificationDetailsLayout->setContentsMargins(0, 0, 0, 0);  // Remove internal margins
 
+    // Message label with improved text display
+    QLabel *messageLabel = new QLabel();
+    messageLabel->setWordWrap(true);
+    messageLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);  // Allow text selection
+    messageLabel->setStyleSheet("margin-bottom: 3px; color: #333333;");
+    messageLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 
+    QFont messageFont;
+    messageFont.setPointSize(12);
+    messageLabel->setFont(messageFont);
 
-    // Format message based on content type
+    // Format message
     QString messageText;
     if (notification.content == "join" && notification.isRequest) {
         messageText = QString("<b>%1</b> sent a request to join the club").arg(notification.username);
@@ -306,16 +331,11 @@ QWidget* LNoti::createNotificationWidget(const Notification &notification, int i
     } else if (notification.content == "reject") {
         messageText = QString("<b>%1</b> was rejected from joining the club").arg(notification.username);
     }
-
-    QLabel *messageLabel = new QLabel(messageText);
-    messageLabel->setWordWrap(true);
-    QFont messageFont;
-    messageFont.setPointSize(12);
-    messageLabel->setFont(messageFont);
+    messageLabel->setText(messageText);
 
     // Time label
     QLabel *timeLabel = new QLabel(formatTimestamp(notification.timestamp));
-    timeLabel->setStyleSheet("color: #555555;");
+    timeLabel->setStyleSheet("color: #555555; margin-top: 2px;");
     QFont timeFont;
     timeFont.setPointSize(10);
     timeLabel->setFont(timeFont);
@@ -323,55 +343,48 @@ QWidget* LNoti::createNotificationWidget(const Notification &notification, int i
     notificationDetailsLayout->addWidget(messageLabel);
     notificationDetailsLayout->addWidget(timeLabel);
 
-    // Add user icon and notification details to layout
+    // Add to main layout
     notificationLayout->addWidget(userIcon);
-    notificationLayout->addLayout(notificationDetailsLayout, 1);
+    notificationLayout->addLayout(notificationDetailsLayout, 1);  // Allow details to expand
 
-    // Add buttons only for join requests
+    // Action buttons for join requests
     if (notification.content == "join" && notification.isRequest) {
-        QVBoxLayout *actionButtonsLayout = new QVBoxLayout();
-        actionButtonsLayout->setSpacing(6);
+        QHBoxLayout *actionButtonsLayout = new QHBoxLayout();
+        actionButtonsLayout->setSpacing(6);  // Reduced spacing between buttons
+        actionButtonsLayout->setContentsMargins(0, 0, 0, 0);
 
-        // Approve button (checkmark)
+        // Approve button
         QPushButton *approveButton = new QPushButton();
-        approveButton->setFixedSize(32, 32);
+        approveButton->setFixedSize(30, 30);  // Slightly smaller buttons
         approveButton->setIcon(QIcon(":/images/resources/checkmark.png"));
-        approveButton->setIconSize(QSize(18, 18));
-        approveButton->setStyleSheet("QPushButton { background-color: white; border-radius: 16px; border: 1px solid #CCCCCC; }");
+        approveButton->setIconSize(QSize(16, 16));
+        approveButton->setStyleSheet("QPushButton { background-color: white; border-radius: 15px; border: 1px solid #CCCCCC; }");
+        if (approveButton->icon().isNull()) approveButton->setText("✓");
+        connect(approveButton, &QPushButton::clicked, [this, index]() { onAcceptClicked(index); });
 
-        // Fallback if image not found
-        if (approveButton->icon().isNull()) {
-            approveButton->setText("✓");
-        }
-
-        connect(approveButton, &QPushButton::clicked, [this, index]() {
-            onAcceptClicked(index);
-        });
-
-        // Reject button (X)
+        // Reject button
         QPushButton *rejectButton = new QPushButton();
-        rejectButton->setFixedSize(32, 32);
-        rejectButton->setIcon(QIcon(":/images/resources/x_mark.png"));
-        rejectButton->setIconSize(QSize(18, 18));
-        rejectButton->setStyleSheet("QPushButton { background-color: white; border-radius: 16px; border: 1px solid #CCCCCC; }");
-
-        // Fallback if image not found
-        if (rejectButton->icon().isNull()) {
-            rejectButton->setText("✗");
-        }
-
-        connect(rejectButton, &QPushButton::clicked, [this, index]() {
-            onRejectClicked(index);
-        });
+        rejectButton->setFixedSize(30, 30);
+        rejectButton->setIcon(QIcon(":/images/resources/xmark.png"));
+        rejectButton->setIconSize(QSize(16, 16));
+        rejectButton->setStyleSheet("QPushButton { background-color: white; border-radius: 15px; border: 1px solid #CCCCCC; }");
+        if (rejectButton->icon().isNull()) rejectButton->setText("✗");
+        connect(rejectButton, &QPushButton::clicked, [this, index]() { onRejectClicked(index); });
 
         actionButtonsLayout->addWidget(approveButton);
         actionButtonsLayout->addWidget(rejectButton);
         notificationLayout->addLayout(actionButtonsLayout);
     }
 
-    // Create a widget to contain this layout
+    // Create the widget
     QWidget *widget = new QWidget();
     widget->setLayout(notificationLayout);
+    widget->setStyleSheet(
+        "background-color: rgba(255, 255, 255, 0.7);"
+        "border-radius: 8px;"
+        "padding: 2px;"
+        );
+    widget->setMinimumWidth(300);  // Ensure minimum width for proper text display
 
     return widget;
 }
@@ -438,8 +451,12 @@ void LNoti::onAcceptClicked(int index) {
             // Update user's club status
             updateUserClubStatus(notification.userId, notification.clubId, true);
 
-            // Refresh notification list
-            refreshNotifications();
+            // Immediately update the notification in our local list
+            m_notifications[index].isRequest = false;
+
+            // Refresh the specific notification widget instead of all
+            clearNotifications();
+            loadNotificationsFromDatabase();
         }
     }
 }
@@ -467,7 +484,8 @@ void LNoti::onRejectClicked(int index)
             updateUserClubStatus(notification.userId, notification.clubId, false);
 
             // Refresh notification list
-            refreshNotifications();
+            clearNotifications();
+            loadNotificationsFromDatabase();
         }
     }
 }
@@ -517,22 +535,19 @@ void LNoti::updateUserClubStatus(int userId, int clubId, bool accepted)
         qDebug() << "Error updating user clubs:" << updateQuery.lastError().text();
     }
 }
-
-void LNoti::refreshNotifications()
+void LNoti::clearNotifications()
 {
-    // Clear notification widgets from layout
-    while (QLayoutItem* item = m_notificationsLayout->takeAt(0)) {
-        if (QWidget* widget = item->widget()) {
-            widget->hide();
-            widget->deleteLater();
+
+    // Clear existing notification widgets
+    QLayoutItem* item;
+    while ((item = m_notificationsLayout->takeAt(0)) != nullptr) {
+        if (item->widget()) {
+            item->widget()->deleteLater();
         }
         delete item;
     }
-
     m_notificationWidgets.clear();
 
-    // Reload notifications from database
-    loadNotificationsFromDatabase();
 }
 
 QString LNoti::formatTimestamp(qint64 timestamp)
