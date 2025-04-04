@@ -45,7 +45,7 @@ private slots:
     void showLeaderHomePage();
     void showLeaderGroupChat();
     void showLeaderNotifications();
-    void showLeaderboard();
+    void showLeaderboard(int clubId);
 
     // Navigation methods for member pages
     void showMemberHomePage();
@@ -74,7 +74,7 @@ private:
     void initializeLeaderHomePage();
     void initializeLeaderGroupChat();
     void initializeLeaderNotifications();
-    void initializeLeaderboardPage();
+    void initializeLeaderboardPage(int clubId);
 
     // Initialize member pages
     void initializeMemberHomePage();
