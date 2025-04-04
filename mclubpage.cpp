@@ -267,14 +267,41 @@ void MClubPage::setupUI()
     eventIcon->setFixedSize(40, 40);
     eventIcon->setStyleSheet("QPushButton { background-color: transparent; border: none; }");
 
+    // In MHomepage::setupUI() method, replace the profile icon creation with:
+
+    // Profile icon with user photo
     QPushButton* profileIcon = new QPushButton();
-    QIcon profileIconImage(":/images/resources/user.png");
-    if (!profileIconImage.isNull()) {
-        profileIcon->setIcon(profileIconImage);
-        profileIcon->setIconSize(QSize(24, 24));
+    QSqlQuery profileQuery;
+    profileQuery.prepare("SELECT profile_photo FROM users_list WHERE user_id = :userId");
+    profileQuery.bindValue(":userId", m_userId);
+
+    if (profileQuery.exec() && profileQuery.next() && !profileQuery.value(0).isNull()) {
+        QByteArray photoData = profileQuery.value(0).toByteArray();
+        QPixmap userPhoto;
+        if (userPhoto.loadFromData(photoData)) {
+            // Create circular profile photo
+            QPixmap circularPhoto = QPixmap(40, 40);
+            circularPhoto.fill(Qt::transparent);
+
+            QPainter painter(&circularPhoto);
+            painter.setRenderHint(QPainter::Antialiasing);
+            painter.setBrush(QBrush(userPhoto.scaled(40, 40, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)));
+            painter.setPen(Qt::NoPen);
+            painter.drawEllipse(0, 0, 40, 40);
+
+            profileIcon->setIcon(QIcon(circularPhoto));
+            profileIcon->setIconSize(QSize(40, 40));
+        } else {
+            // Fallback to default icon if image can't be loaded
+            profileIcon->setIcon(QIcon(":/images/resources/user.png"));
+            profileIcon->setIconSize(QSize(24, 24));
+        }
     } else {
-        profileIcon->setText("Profile");
+        // Use default icon if no profile photo
+        profileIcon->setIcon(QIcon(":/images/resources/user.png"));
+        profileIcon->setIconSize(QSize(24, 24));
     }
+
     profileIcon->setFixedSize(40, 40);
     profileIcon->setStyleSheet("QPushButton { background-color: transparent; border: none; }");
 
@@ -504,6 +531,12 @@ QWidget* MClubPage::createClubItem(int clubId, const QString& name, const QStrin
     nameLabel->setFont(nameFont);
 
     QLabel* rankLabel = new QLabel("Rank: " + rank);
+    // Inside the function that displays club cards, add this code to fetch and show the rank
+    int clubRank = Database::calculateClubRanking(clubId);
+    if (clubRank > 0) {
+        rankLabel = new QLabel(QString("Rank: #%1").arg(clubRank));
+        rankLabel->setStyleSheet("font-weight: bold;");
+    }
     QLabel* membersLabel = new QLabel("Members: " + members);
 
     infoLayout->addWidget(nameLabel);
@@ -515,7 +548,7 @@ QWidget* MClubPage::createClubItem(int clubId, const QString& name, const QStrin
 
     if (!isJoinedView) {
         // Status button for Pending view
-        QPushButton* statusButton = new QPushButton(isPending ? "Pending" : "Cancel");
+        QPushButton* statusButton = new QPushButton("Pending");
         statusButton->setFixedSize(80, 30);
         statusButton->setStyleSheet(
             isPending ?
@@ -535,7 +568,7 @@ QWidget* MClubPage::createClubItem(int clubId, const QString& name, const QStrin
             );
 
         // Connect the cancel button to remove the club request
-        if (!isPending) {
+        if (isPending) {
             connect(statusButton, &QPushButton::clicked, [this, clubId]() {
                 cancelClubRequest(clubId);
             });
@@ -661,38 +694,155 @@ QWidget* MClubPage::createClubItem(int clubId, const QString& name, const QStrin
 
 void MClubPage::leaveClub(int clubId)
 {
-    User user = User::loadFromDatabase(m_userId);
-    if (user.getId() == 0) {
-        qDebug() << "Failed to load user for leaving club";
-        return;
-    }
+        QMessageBox confirmBox;
+        confirmBox.setWindowTitle("Leave Club");
+        confirmBox.setText("Are you sure you want to leave this club?");
+        confirmBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+        confirmBox.setDefaultButton(QMessageBox::No);
 
-    user.leaveClub(clubId);
-    if (user.saveToDatabase()) {
-        qDebug() << "Successfully left club with ID:" << clubId;
-        // Refresh the clubs view
-        loadUserClubs();
-    } else {
-        qDebug() << "Failed to leave club with ID:" << clubId;
-    }
+        int ret = confirmBox.exec();
+
+        if (ret == QMessageBox::Yes) {
+            // Get current joined clubs
+            QSqlQuery query;
+            query.prepare("SELECT joined_clubs, going_events FROM users_list WHERE user_id = :userId");
+            query.bindValue(":userId", m_userId);
+
+            if (query.exec() && query.next()) {
+                // Get current joined clubs and going events
+                QString joinedClubs = query.value(0).toString();
+                QString goingEvents = query.value(1).toString();
+
+                // Remove the club from joined clubs
+                QVector<int> joinedClubsVector = Database::deserializeUserIds(joinedClubs);
+                joinedClubsVector.removeAll(clubId);
+                QString updatedJoinedClubs = Database::serializeUserIds(joinedClubsVector);
+
+                QVector<int> goingEventsVector = Database::deserializeUserIds(goingEvents);
+                qDebug() << "BEFORE - User going events:" << goingEventsVector;
+                QVector<int> updatedGoingEvents;
+
+
+
+                // Get club's events
+                QSqlQuery eventsQuery;
+                eventsQuery.prepare("SELECT event_ids FROM clubs_list WHERE club_id = :clubId");
+                eventsQuery.bindValue(":clubId", clubId);
+
+                if (eventsQuery.exec() && eventsQuery.next()) {
+                    QString clubEvents = eventsQuery.value(0).toString();
+                    QVector<int> clubEventsVector = Database::deserializeUserIds(clubEvents);
+
+                    // You might also want to log the club's events that are being removed
+                    qDebug() << "Club events :" << clubEventsVector;
+
+                    // For each event the user is going to
+                    for (int eventId : goingEventsVector) {
+                        // Check if this event belongs to the club the user is leaving
+                        QSqlQuery checkQuery;
+                        checkQuery.prepare("SELECT 1 FROM events_list WHERE event_id = :eventId AND club_id = :clubId");
+                        checkQuery.bindValue(":eventId", eventId);
+                        checkQuery.bindValue(":clubId", clubId);
+
+                        if (checkQuery.exec() && checkQuery.next()) {
+                            // This event belongs to the club, decrement the count
+                            QSqlQuery updateEventQuery;
+                            updateEventQuery.prepare("UPDATE events_list SET event_going_count = event_going_count - 1 WHERE event_id = :eventId");
+                            updateEventQuery.bindValue(":eventId", eventId);
+                            updateEventQuery.exec();
+                        } else {
+                            // This event doesn't belong to the club, keep it
+                            updatedGoingEvents.append(eventId);
+                        }
+                    }
+                }
+
+                qDebug() << "AFTER - User going events:" << updatedGoingEvents;
+                // Update user record
+                QSqlQuery updateQuery;
+                updateQuery.prepare("UPDATE users_list SET joined_clubs = :joinedClubs, going_events = :goingEvents WHERE user_id = :userId");
+                updateQuery.bindValue(":joinedClubs", updatedJoinedClubs);
+                updateQuery.bindValue(":goingEvents", Database::serializeUserIds(updatedGoingEvents));
+                updateQuery.bindValue(":userId", m_userId);
+                updateQuery.exec();
+
+                // Also remove user from club's members list
+                QSqlQuery clubQuery;
+                clubQuery.prepare("SELECT club_members FROM clubs_list WHERE club_id = :clubId");
+                clubQuery.bindValue(":clubId", clubId);
+
+                if (clubQuery.exec() && clubQuery.next()) {
+                    QString clubMembers = clubQuery.value(0).toString();
+                    QVector<int> membersVector = Database::deserializeUserIds(clubMembers);
+                    membersVector.removeAll(m_userId);
+
+                    QSqlQuery updateClubQuery;
+                    updateClubQuery.prepare("UPDATE clubs_list SET club_members = :members WHERE club_id = :clubId");
+                    updateClubQuery.bindValue(":members", Database::serializeUserIds(membersVector));
+                    updateClubQuery.bindValue(":clubId", clubId);
+                    updateClubQuery.exec();
+                }
+
+                // Create notification for leaving
+                QSqlQuery notifQuery;
+                notifQuery.prepare("INSERT INTO notification_lists (club_id, is_request, content, user_id, timestamp) "
+                                   "VALUES (:clubId, 0, :content, :userId, :timestamp)");
+                notifQuery.bindValue(":clubId", clubId);
+                notifQuery.bindValue(":is_request", 0); // 0 for notification, not request
+                notifQuery.bindValue(":content", "leave");
+                notifQuery.bindValue(":userId", m_userId);
+                notifQuery.bindValue(":timestamp", QDateTime::currentSecsSinceEpoch());
+                notifQuery.exec();
+
+                // Refresh the UI
+                loadUserClubs();
+            }
+        }
+
 }
 
 void MClubPage::cancelClubRequest(int clubId)
 {
-    User user = User::loadFromDatabase(m_userId);
-    if (user.getId() == 0) {
-        qDebug() << "Failed to load user for canceling club request";
-        return;
-    }
+        QMessageBox confirmBox;
+        confirmBox.setWindowTitle("Cancel Request");
+        confirmBox.setText("Are you sure you want to cancel your request to join this club?");
+        confirmBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+        confirmBox.setDefaultButton(QMessageBox::No);
 
-    user.removeClubRequest(clubId);
-    if (user.saveToDatabase()) {
-        qDebug() << "Successfully canceled request for club with ID:" << clubId;
-        // Refresh the clubs view
-        loadUserClubs();
-    } else {
-        qDebug() << "Failed to cancel request for club with ID:" << clubId;
-    }
+        int ret = confirmBox.exec();
+
+        if (ret == QMessageBox::Yes) {
+            // Get current pending clubs
+            QSqlQuery query;
+            query.prepare("SELECT pending_clubs FROM users_list WHERE user_id = :userId");
+            query.bindValue(":userId", m_userId);
+
+            if (query.exec() && query.next()) {
+                QString pendingClubs = query.value(0).toString();
+                QVector<int> pendingClubsVector = Database::deserializeUserIds(pendingClubs);
+
+                // Remove the club from pending clubs
+                pendingClubsVector.removeAll(clubId);
+                QString updatedPendingClubs = Database::serializeUserIds(pendingClubsVector);
+
+                // Update user record
+                QSqlQuery updateQuery;
+                updateQuery.prepare("UPDATE users_list SET pending_clubs = :pendingClubs WHERE user_id = :userId");
+                updateQuery.bindValue(":pendingClubs", updatedPendingClubs);
+                updateQuery.bindValue(":userId", m_userId);
+                updateQuery.exec();
+
+                // Remove the notification request
+                QSqlQuery deleteNotifQuery;
+                deleteNotifQuery.prepare("DELETE FROM notification_lists WHERE club_id = :clubId AND user_id = :userId AND is_request = 1");
+                deleteNotifQuery.bindValue(":clubId", clubId);
+                deleteNotifQuery.bindValue(":userId", m_userId);
+                deleteNotifQuery.exec();
+
+                loadUserClubs();
+            }
+        }
+
 }
 
 QWidget* MClubPage::createSeparator()
