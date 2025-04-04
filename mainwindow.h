@@ -8,7 +8,6 @@
 #include "adminHome.h"
 #include "adminMember.h"
 #include "adminClub.h"
-#include "adminNoti.h"
 #include "lhomepage.h"
 #include "lgroupchat.h"
 #include "lnoti.h"
