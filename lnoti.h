@@ -47,7 +47,7 @@ private:
     void setupNotificationsArea();
     void loadNotificationsFromDatabase();
     void updateUserClubStatus(int userId, int clubId, bool accepted);
-    void refreshNotifications();
+    void clearNotifications();
     QWidget* createNotificationWidget(const Notification &notification, int index);
     QWidget* createHeaderWidget();
     QString formatTimestamp(qint64 timestamp);
