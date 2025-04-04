@@ -51,7 +51,7 @@ BubbleMessage::BubbleMessage(const QString &text, const QString &sender, const Q
         containerLayout->addStretch(1); // Keep message on the left
 
     } else {
-        bubbleWidget->setStyleSheet("background-color: #E8FDD8; border-radius: 10px;");
+        bubbleWidget->setStyleSheet("background-color: #F8F4A3; border-radius: 10px;");
         containerLayout->addStretch(1); // Push message to the right
         containerLayout->addWidget(bubbleWidget);
         senderLabel = nullptr;
