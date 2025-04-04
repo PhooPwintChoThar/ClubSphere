@@ -152,36 +152,47 @@ void AdminHome::setupTopClubsSection()
     clubFont.setBold(true);
     clubFont.setPointSize(10);
 
-    // Create club entries with medals
-    QHBoxLayout *musicClubLayout = new QHBoxLayout();
-    goldMedal1 = createMedalLabel("gold", true);
-    musicClubLabel = new QLabel("Music Club", this);
-    musicClubLabel->setFont(clubFont);
-    musicClubLayout->addWidget(goldMedal1);
-    musicClubLayout->addWidget(musicClubLabel);
-    musicClubLayout->addStretch();
-
-    QHBoxLayout *basketballClubLayout = new QHBoxLayout();
-    silverMedal1 = createMedalLabel("silver", true);
-    basketballClubLabel = new QLabel("BasketBall Club", this);
-    basketballClubLabel->setFont(clubFont);
-    basketballClubLayout->addWidget(silverMedal1);
-    basketballClubLayout->addWidget(basketballClubLabel);
-    basketballClubLayout->addStretch();
-
-    QHBoxLayout *badmintonClubLayout = new QHBoxLayout();
-    bronzeMedal1 = createMedalLabel("bronze", true);
-    badmintonClubLabel = new QLabel("Badminton Club", this);
-    badmintonClubLabel->setFont(clubFont);
-    badmintonClubLayout->addWidget(bronzeMedal1);
-    badmintonClubLayout->addWidget(badmintonClubLabel);
-    badmintonClubLayout->addStretch();
+    // Get top clubs from database
+    auto detailedClubs = Database::getDetailedClubRankings();
 
     topClubsLayout->addWidget(thisWeekClubsLabel);
     topClubsLayout->addWidget(topClubsLabel);
-    topClubsLayout->addLayout(musicClubLayout);
-    topClubsLayout->addLayout(basketballClubLayout);
-    topClubsLayout->addLayout(badmintonClubLayout);
+
+    if (detailedClubs.size() >= 3) {
+        // Create club entries with medals
+        QHBoxLayout *firstClubLayout = new QHBoxLayout();
+        goldMedal1 = createMedalLabel("gold", true);
+        firstClubLabel = new QLabel(detailedClubs[0].second.first, this);
+        firstClubLabel->setFont(clubFont);
+        firstClubLayout->addWidget(goldMedal1);
+        firstClubLayout->addWidget(firstClubLabel);
+        firstClubLayout->addStretch();
+
+        QHBoxLayout *secondClubLayout = new QHBoxLayout();
+        silverMedal1 = createMedalLabel("silver", true);
+        secondClubLabel = new QLabel(detailedClubs[1].second.first, this);
+        secondClubLabel->setFont(clubFont);
+        secondClubLayout->addWidget(silverMedal1);
+        secondClubLayout->addWidget(secondClubLabel);
+        secondClubLayout->addStretch();
+
+        QHBoxLayout *thirdClubLayout = new QHBoxLayout();
+        bronzeMedal1 = createMedalLabel("bronze", true);
+        thirdClubLabel = new QLabel(detailedClubs[2].second.first, this);
+        thirdClubLabel->setFont(clubFont);
+        thirdClubLayout->addWidget(bronzeMedal1);
+        thirdClubLayout->addWidget(thirdClubLabel);
+        thirdClubLayout->addStretch();
+
+        topClubsLayout->addLayout(firstClubLayout);
+        topClubsLayout->addLayout(secondClubLayout);
+        topClubsLayout->addLayout(thirdClubLayout);
+    } else {
+        // Handle case with fewer than 3 clubs
+        QLabel* placeholderLabel = new QLabel("Not enough clubs for ranking", this);
+        placeholderLabel->setAlignment(Qt::AlignCenter);
+        topClubsLayout->addWidget(placeholderLabel);
+    }
 
     mainLayout->addWidget(topClubsFrame, 0, Qt::AlignHCenter);
 }
@@ -208,36 +219,47 @@ void AdminHome::setupTopUsersSection()
     userFont.setBold(true);
     userFont.setPointSize(10);
 
-    // Create user entries with medals
-    QHBoxLayout *maryLayout = new QHBoxLayout();
-    goldMedal2 = createMedalLabel("gold", true);
-    maryLabel = new QLabel("Mary", this);
-    maryLabel->setFont(userFont);
-    maryLayout->addWidget(goldMedal2);
-    maryLayout->addWidget(maryLabel);
-    maryLayout->addStretch();
-
-    QHBoxLayout *michelLayout = new QHBoxLayout();
-    silverMedal2 = createMedalLabel("silver", true);
-    michelLabel = new QLabel("Michel", this);
-    michelLabel->setFont(userFont);
-    michelLayout->addWidget(silverMedal2);
-    michelLayout->addWidget(michelLabel);
-    michelLayout->addStretch();
-
-    QHBoxLayout *christinaLayout = new QHBoxLayout();
-    bronzeMedal2 = createMedalLabel("bronze", true);
-    christinaLabel = new QLabel("Christina", this);
-    christinaLabel->setFont(userFont);
-    christinaLayout->addWidget(bronzeMedal2);
-    christinaLayout->addWidget(christinaLabel);
-    christinaLayout->addStretch();
+    // Get top members from database
+    auto detailedMembers = Database::getDetailedMemberRankings();
 
     topUsersLayout->addWidget(thisWeekUsersLabel);
     topUsersLayout->addWidget(topUsersLabel);
-    topUsersLayout->addLayout(maryLayout);
-    topUsersLayout->addLayout(michelLayout);
-    topUsersLayout->addLayout(christinaLayout);
+
+    if (detailedMembers.size() >= 3) {
+        // Create user entries with medals
+        QHBoxLayout *firstUserLayout = new QHBoxLayout();
+        goldMedal2 = createMedalLabel("gold", true);
+        firstUserLabel = new QLabel(detailedMembers[0].second.first, this);
+        firstUserLabel->setFont(userFont);
+        firstUserLayout->addWidget(goldMedal2);
+        firstUserLayout->addWidget(firstUserLabel);
+        firstUserLayout->addStretch();
+
+        QHBoxLayout *secondUserLayout = new QHBoxLayout();
+        silverMedal2 = createMedalLabel("silver", true);
+        secondUserLabel = new QLabel(detailedMembers[1].second.first, this);
+        secondUserLabel->setFont(userFont);
+        secondUserLayout->addWidget(silverMedal2);
+        secondUserLayout->addWidget(secondUserLabel);
+        secondUserLayout->addStretch();
+
+        QHBoxLayout *thirdUserLayout = new QHBoxLayout();
+        bronzeMedal2 = createMedalLabel("bronze", true);
+        thirdUserLabel = new QLabel(detailedMembers[2].second.first, this);
+        thirdUserLabel->setFont(userFont);
+        thirdUserLayout->addWidget(bronzeMedal2);
+        thirdUserLayout->addWidget(thirdUserLabel);
+        thirdUserLayout->addStretch();
+
+        topUsersLayout->addLayout(firstUserLayout);
+        topUsersLayout->addLayout(secondUserLayout);
+        topUsersLayout->addLayout(thirdUserLayout);
+    } else {
+        // Handle case with fewer than 3 users
+        QLabel* placeholderLabel = new QLabel("Not enough users for ranking", this);
+        placeholderLabel->setAlignment(Qt::AlignCenter);
+        topUsersLayout->addWidget(placeholderLabel);
+    }
 
     mainLayout->addWidget(topUsersFrame, 0, Qt::AlignHCenter);
 
