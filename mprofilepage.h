@@ -1,22 +1,22 @@
 // mprofilepage.h
 #ifndef MPROFILEPAGE_H
 #define MPROFILEPAGE_H
-
+#include<QScrollArea>
 #include <QWidget>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
-#include <QFrame>
 #include <QTimer>
-#include <QScrollArea>
+#include <QSqlQuery>
+#include<QScrollBar>
 
 class MProfilePage : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit MProfilePage(QWidget *parent = nullptr);
+    explicit MProfilePage(int userId, QWidget *parent = nullptr);
     ~MProfilePage();
 
 signals:
@@ -30,17 +30,44 @@ private slots:
     void clubClicked();
     void eventClicked();
     void profileClicked();
+    void editProfileImage();
+    void editUsername();
 
 private:
     void setupUI();
+    void loadUserData();
+    void loadClubRankings();
+    void updateProfilePicture(const QPixmap &pixmap);
+    void saveProfileImageToDatabase();
+    QPixmap createCircularPixmap(const QPixmap& pixmap, int size);
+
+    int user_id;
+    QString userName;
+    QVector<int> joinedClubs;
+    QPixmap m_profilePixmap;
 
     // UI Components
     QVBoxLayout* m_mainLayout;
-    QLabel* m_titleLabel;
-
-    // Bottom navigation
     QWidget* m_bottomNavBar;
     QHBoxLayout* m_bottomNavLayout;
+
+    // Profile components
+    QWidget* profileBgWidget;
+    QLabel* profilePicWidget;
+    QPushButton* editProfileBtn;
+    QPushButton* editUsernameBtn;
+    QLabel* usernameValue;
+    QLabel* idValue;
+    QLabel* pointsValue;
+    QLabel* clubsJoinedValue;
+
+    // Rankings components
+    QScrollArea* rankingsScrollArea;
+    QWidget* rankingsWidget;
+    QVBoxLayout* rankingsLayout;
+
+    // Navigation components
+    QPushButton* profileIcon;
 };
 
 #endif // MPROFILEPAGE_H
