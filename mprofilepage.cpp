@@ -8,11 +8,17 @@
 #include <QPainter>
 #include <QBitmap>
 #include <QPixmap>
+#include <QBuffer>
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QInputDialog>
+#include "database.h"
 
-MProfilePage::MProfilePage(QWidget *parent)
-    : QWidget(parent)
+MProfilePage::MProfilePage(int userId, QWidget *parent)
+    : QWidget(parent), user_id(userId)
 {
     setupUI();
+    loadUserData();
 }
 
 MProfilePage::~MProfilePage()
@@ -26,29 +32,31 @@ void MProfilePage::setupUI()
     m_mainLayout->setContentsMargins(0, 0, 0, 0);
     m_mainLayout->setSpacing(0);
 
+    // Create a scroll area for the whole page content
+    QScrollArea* mainScrollArea = new QScrollArea(this);
+    mainScrollArea->setWidgetResizable(true);
+    mainScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    mainScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    mainScrollArea->setFrameShape(QFrame::NoFrame);
+
+    QWidget* scrollContent = new QWidget();
+    QVBoxLayout* scrollLayout = new QVBoxLayout(scrollContent);
+    scrollLayout->setContentsMargins(0, 0, 0, 0);
+    scrollLayout->setSpacing(0);
+
     // Profile area with light green background
-    QWidget* profileBgWidget = new QWidget();
+    profileBgWidget = new QWidget();
     profileBgWidget->setFixedHeight(200);
     profileBgWidget->setStyleSheet("background-color: #c9e4c5;");
 
     // Profile picture area with image from resources
-    QLabel* profilePicWidget = new QLabel();
+    profilePicWidget = new QLabel();
     profilePicWidget->setFixedSize(120, 120);
-    QPixmap profilePixmap(":/images/resources/user.png"); // Replace with your actual resource path
-    if (!profilePixmap.isNull()) {
-        // Scale the pixmap to fit the label
-        profilePixmap = profilePixmap.scaled(120, 120, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
-        // Create a circular mask
-        QBitmap mask(120, 120);
-        mask.fill(Qt::white);
-        QPainter painter(&mask);
-        painter.setBrush(Qt::black);
-        painter.drawEllipse(0, 0, 120, 120);
-
-        // Apply the mask to make the image circular
-        profilePixmap.setMask(mask);
-        profilePicWidget->setPixmap(profilePixmap);
+    // Default profile image setup
+    m_profilePixmap = QPixmap(":/images/resources/user.png");
+    if (!m_profilePixmap.isNull()) {
+        updateProfilePicture(m_profilePixmap);
     } else {
         // Fallback if image isn't found - keep the gray circle
         profilePicWidget->setStyleSheet(
@@ -65,7 +73,7 @@ void MProfilePage::setupUI()
     }
 
     // Edit icon button - now using PNG image
-    QPushButton* editProfileBtn = new QPushButton();
+    editProfileBtn = new QPushButton();
     editProfileBtn->setFixedSize(30, 30);
     QIcon editIcon(":/images/resources/edit.png");
     if (!editIcon.isNull()) {
@@ -92,14 +100,17 @@ void MProfilePage::setupUI()
             );
     }
 
+    // Connect edit profile button
+    connect(editProfileBtn, &QPushButton::clicked, this, &MProfilePage::editProfileImage);
+
     // Position profile pic and edit button
     QVBoxLayout* profileBgLayout = new QVBoxLayout(profileBgWidget);
     profileBgLayout->setAlignment(Qt::AlignCenter);
     profileBgLayout->addWidget(profilePicWidget, 0, Qt::AlignCenter);
 
-    // Position edit button at the bottom right of profile pic
-    editProfileBtn->setParent(profileBgWidget);
-    editProfileBtn->move(profileBgWidget->width()/2 + 30, profileBgWidget->height()/2 + 10);
+    // Position edit button relative to profilePicWidget
+    editProfileBtn->setParent(profilePicWidget);
+    editProfileBtn->move(profilePicWidget->width() - 20, profilePicWidget->height() - 20);
 
     // User information section
     QWidget* userInfoWidget = new QWidget();
@@ -120,7 +131,7 @@ void MProfilePage::setupUI()
     usernameLabel->setFont(regularFont);
     usernameLabel->setStyleSheet("color: #666666;");
 
-    QPushButton* editUsernameBtn = new QPushButton();
+    editUsernameBtn = new QPushButton();
     QIcon editUsernameIcon(":/images/resources/edit.png");
     if (!editUsernameIcon.isNull()) {
         editUsernameBtn->setIcon(editUsernameIcon);
@@ -134,7 +145,10 @@ void MProfilePage::setupUI()
         editUsernameBtn->setStyleSheet("color: #888888; background: transparent; border: none;");
     }
 
-    QLabel* usernameValue = new QLabel("Johnathan");
+    // Connect edit username button
+    connect(editUsernameBtn, &QPushButton::clicked, this, &MProfilePage::editUsername);
+
+    usernameValue = new QLabel("Loading...");
     QFont valueFont;
     valueFont.setPointSize(11);
     usernameValue->setFont(valueFont);
@@ -161,7 +175,7 @@ void MProfilePage::setupUI()
     idLabel->setFont(regularFont);
     idLabel->setStyleSheet("color: #666666;");
 
-    QLabel* idValue = new QLabel("67011731");
+    idValue = new QLabel(QString::number(user_id));
     idValue->setFont(valueFont);
     idValue->setAlignment(Qt::AlignRight);
 
@@ -185,7 +199,7 @@ void MProfilePage::setupUI()
     pointsLabel->setFont(regularFont);
     pointsLabel->setStyleSheet("color: #666666;");
 
-    QLabel* pointsValue = new QLabel("350");
+    pointsValue = new QLabel("Loading...");
     pointsValue->setFont(valueFont);
     pointsValue->setAlignment(Qt::AlignRight);
 
@@ -209,13 +223,13 @@ void MProfilePage::setupUI()
     clubsLabel->setFont(regularFont);
     clubsLabel->setStyleSheet("color: #666666;");
 
-    QLabel* clubsValue = new QLabel("5");
-    clubsValue->setFont(valueFont);
-    clubsValue->setAlignment(Qt::AlignRight);
+    clubsJoinedValue = new QLabel("Loading...");
+    clubsJoinedValue->setFont(valueFont);
+    clubsJoinedValue->setAlignment(Qt::AlignRight);
 
     clubsLayout->addWidget(clubsLabel);
     clubsLayout->addStretch(1);
-    clubsLayout->addWidget(clubsValue);
+    clubsLayout->addWidget(clubsJoinedValue);
 
     // Add rows to user info layout
     userInfoLayout->addWidget(usernameWidget);
@@ -231,152 +245,16 @@ void MProfilePage::setupUI()
     rankingsLabel->setFont(regularFont);
     rankingsLabel->setContentsMargins(20, 15, 0, 10);
 
-    // Create a scrollable rankings area
-    QScrollArea* rankingsScrollArea = new QScrollArea();
-    rankingsScrollArea->setWidgetResizable(true);
-    rankingsScrollArea->setStyleSheet("background-color: #dddddd; border: none;");
-    rankingsScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    rankingsScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-
-    // Create the widget that will be inside the scroll area
-    QWidget* rankingsWidget = new QWidget();
+    // Create the widget for rankings directly (no separate scroll area)
+    rankingsWidget = new QWidget();
     rankingsWidget->setStyleSheet("background-color: #dddddd;");
 
-    QVBoxLayout* rankingsLayout = new QVBoxLayout(rankingsWidget);
+    rankingsLayout = new QVBoxLayout(rankingsWidget);
     rankingsLayout->setContentsMargins(20, 10, 20, 10);
     rankingsLayout->setSpacing(0);
 
-    // Music Club ranking
-    QWidget* musicRankWidget = new QWidget();
-    musicRankWidget->setFixedHeight(50);
-    QHBoxLayout* musicRankLayout = new QHBoxLayout(musicRankWidget);
-    musicRankLayout->setContentsMargins(0, 0, 0, 0);
-
-    QLabel* musicClubLabel = new QLabel("Music Club");
-    musicClubLabel->setFont(regularFont);
-
-    QLabel* musicRankValue = new QLabel("Top 1");
-    musicRankValue->setFont(valueFont);
-    musicRankValue->setAlignment(Qt::AlignRight);
-
-    musicRankLayout->addWidget(musicClubLabel);
-    musicRankLayout->addStretch(1);
-    musicRankLayout->addWidget(musicRankValue);
-
-    // Separator line
-    QFrame* rankLine1 = new QFrame();
-    rankLine1->setFrameShape(QFrame::HLine);
-    rankLine1->setFrameShadow(QFrame::Sunken);
-    rankLine1->setStyleSheet("background-color: #cccccc;");
-    rankLine1->setFixedHeight(1);
-
-    // Science Club ranking
-    QWidget* scienceRankWidget = new QWidget();
-    scienceRankWidget->setFixedHeight(50);
-    QHBoxLayout* scienceRankLayout = new QHBoxLayout(scienceRankWidget);
-    scienceRankLayout->setContentsMargins(0, 0, 0, 0);
-
-    QLabel* scienceClubLabel = new QLabel("Science Club");
-    scienceClubLabel->setFont(regularFont);
-
-    QLabel* scienceRankValue = new QLabel("Top 10");
-    scienceRankValue->setFont(valueFont);
-    scienceRankValue->setAlignment(Qt::AlignRight);
-
-    scienceRankLayout->addWidget(scienceClubLabel);
-    scienceRankLayout->addStretch(1);
-    scienceRankLayout->addWidget(scienceRankValue);
-
-    // Separator line
-    QFrame* rankLine2 = new QFrame();
-    rankLine2->setFrameShape(QFrame::HLine);
-    rankLine2->setFrameShadow(QFrame::Sunken);
-    rankLine2->setStyleSheet("background-color: #cccccc;");
-    rankLine2->setFixedHeight(1);
-
-    // Table Tennis Club ranking
-    QWidget* tennisRankWidget = new QWidget();
-    tennisRankWidget->setFixedHeight(50);
-    QHBoxLayout* tennisRankLayout = new QHBoxLayout(tennisRankWidget);
-    tennisRankLayout->setContentsMargins(0, 0, 0, 0);
-
-    QLabel* tennisClubLabel = new QLabel("Table Tennis Club");
-    tennisClubLabel->setFont(regularFont);
-
-    QLabel* tennisRankValue = new QLabel("Top 12");
-    tennisRankValue->setFont(valueFont);
-    tennisRankValue->setAlignment(Qt::AlignRight);
-
-    tennisRankLayout->addWidget(tennisClubLabel);
-    tennisRankLayout->addStretch(1);
-    tennisRankLayout->addWidget(tennisRankValue);
-
-    // Add a few more items to demonstrate scrolling
-    // Chess Club ranking
-    QWidget* chessRankWidget = new QWidget();
-    chessRankWidget->setFixedHeight(50);
-    QHBoxLayout* chessRankLayout = new QHBoxLayout(chessRankWidget);
-    chessRankLayout->setContentsMargins(0, 0, 0, 0);
-
-    QLabel* chessClubLabel = new QLabel("Chess Club");
-    chessClubLabel->setFont(regularFont);
-
-    QLabel* chessRankValue = new QLabel("Top 15");
-    chessRankValue->setFont(valueFont);
-    chessRankValue->setAlignment(Qt::AlignRight);
-
-    chessRankLayout->addWidget(chessClubLabel);
-    chessRankLayout->addStretch(1);
-    chessRankLayout->addWidget(chessRankValue);
-
-    // Separator line
-    QFrame* rankLine3 = new QFrame();
-    rankLine3->setFrameShape(QFrame::HLine);
-    rankLine3->setFrameShadow(QFrame::Sunken);
-    rankLine3->setStyleSheet("background-color: #cccccc;");
-    rankLine3->setFixedHeight(1);
-
-    // Art Club ranking
-    QWidget* artRankWidget = new QWidget();
-    artRankWidget->setFixedHeight(50);
-    QHBoxLayout* artRankLayout = new QHBoxLayout(artRankWidget);
-    artRankLayout->setContentsMargins(0, 0, 0, 0);
-
-    QLabel* artClubLabel = new QLabel("Art Club");
-    artClubLabel->setFont(regularFont);
-
-    QLabel* artRankValue = new QLabel("Top 20");
-    artRankValue->setFont(valueFont);
-    artRankValue->setAlignment(Qt::AlignRight);
-
-    artRankLayout->addWidget(artClubLabel);
-    artRankLayout->addStretch(1);
-    artRankLayout->addWidget(artRankValue);
-
-    // Add rankings to layout
-    rankingsLayout->addWidget(musicRankWidget);
-    rankingsLayout->addWidget(rankLine1);
-    rankingsLayout->addWidget(scienceRankWidget);
-    rankingsLayout->addWidget(rankLine2);
-    rankingsLayout->addWidget(tennisRankWidget);
-    rankingsLayout->addWidget(rankLine3);
-    rankingsLayout->addWidget(chessRankWidget);
-
-    // Fix the clone() error by creating a new QFrame
-    QFrame* rankLine4 = new QFrame();
-    rankLine4->setFrameShape(QFrame::HLine);
-    rankLine4->setFrameShadow(QFrame::Sunken);
-    rankLine4->setStyleSheet("background-color: #cccccc;");
-    rankLine4->setFixedHeight(1);
-    rankingsLayout->addWidget(rankLine4);
-
-    rankingsLayout->addWidget(artRankWidget);
-
-    // Add stretch to keep widgets at the top
+    // We'll populate the rankings in loadUserData function
     rankingsLayout->addStretch(1);
-
-    // Set the widget to the scroll area
-    rankingsScrollArea->setWidget(rankingsWidget);
 
     // Bottom navigation bar - keeping as in the original code
     m_bottomNavBar = new QWidget();
@@ -425,11 +303,11 @@ void MProfilePage::setupUI()
     eventIcon->setStyleSheet("QPushButton { background-color: transparent; border: none; }");
 
     // Profile icon - Using your PNG image
-    QPushButton* profileIcon = new QPushButton();
+    profileIcon = new QPushButton();
     QIcon profileIconImage(":/images/resources/user.png");
     if (!profileIconImage.isNull()) {
         profileIcon->setIcon(profileIconImage);
-        profileIcon->setIconSize(QSize(24, 24));
+        profileIcon->setIconSize(QSize(40, 40));
     } else {
         profileIcon->setText("Profile");
     }
@@ -453,25 +331,252 @@ void MProfilePage::setupUI()
     connect(eventIcon, &QPushButton::clicked, this, &MProfilePage::eventClicked);
     connect(profileIcon, &QPushButton::clicked, this, &MProfilePage::profileClicked);
 
-    // Set edit profile pic button position after layout is set
-    QTimer::singleShot(0, [this, profileBgWidget, editProfileBtn]() {
-        int centerX = profileBgWidget->width() / 2;
-        int centerY = profileBgWidget->height() / 2;
-        editProfileBtn->move(centerX + 25, centerY + 25);
-    });
+    // Add all components to scrollLayout
+    scrollLayout->addWidget(profileBgWidget);
+    scrollLayout->addWidget(userInfoWidget);
+    scrollLayout->addWidget(rankingsLabel);
+    scrollLayout->addWidget(rankingsWidget);
 
-    // Add all components to main layout
-    m_mainLayout->addWidget(profileBgWidget);
-    m_mainLayout->addWidget(userInfoWidget);
-    m_mainLayout->addWidget(rankingsLabel);
-    m_mainLayout->addWidget(rankingsScrollArea, 1); // Give it stretch to take available space
+    // Set the content widget for the scroll area
+    mainScrollArea->setWidget(scrollContent);
+
+    // Main layout now contains just the scroll area and bottom navbar
+    m_mainLayout->addWidget(mainScrollArea, 1);
     m_mainLayout->addWidget(m_bottomNavBar);
 
     // Set fixed width to match window size
     setFixedWidth(350);
+    setFixedHeight(650);
 
     // Set background color for the whole page
     setStyleSheet("background-color: white;");
+}
+
+void MProfilePage::loadUserData()
+{
+    QSqlQuery query;
+    query.prepare("SELECT name, points, profile_photo, joined_clubs FROM users_list WHERE user_id = :userId");
+    query.bindValue(":userId", user_id);
+
+    if (query.exec() && query.next()) {
+        // Get user name
+        userName = query.value(0).toString();
+        if (userName.isEmpty()) {
+            // Try to get name from SE names list
+            userName = Database::getStudentNameById(user_id);
+            if (userName.isEmpty()) {
+                userName = "User " + QString::number(user_id);
+            }
+
+            // Save the name to the database for future use
+            QSqlQuery updateNameQuery;
+            updateNameQuery.prepare("UPDATE users_list SET name = :name WHERE user_id = :userId");
+            updateNameQuery.bindValue(":name", userName);
+            updateNameQuery.bindValue(":userId", user_id);
+            updateNameQuery.exec();
+        }
+        usernameValue->setText(userName);
+
+        // Get points
+        int points = query.value(1).toInt();
+        pointsValue->setText(QString::number(points));
+
+        // Get profile photo
+        QByteArray photoData = query.value(2).toByteArray();
+        if (!photoData.isEmpty()) {
+            QPixmap pixmap;
+            if (pixmap.loadFromData(photoData)) {
+                m_profilePixmap = pixmap;
+                updateProfilePicture(m_profilePixmap);
+
+                QPixmap roundedPixmap = createCircularPixmap(pixmap, 24);
+                profileIcon->setIcon(QIcon(roundedPixmap));
+            }
+        }
+
+        // Get joined clubs
+        QString joinedClubsStr = query.value(3).toString();
+        joinedClubs = Database::deserializeUserIds(joinedClubsStr);
+        clubsJoinedValue->setText(QString::number(joinedClubs.size()));
+
+        // Load club rankings (just a placeholder for now)
+        loadClubRankings();
+    } else {
+        qDebug() << "Failed to load user data:" << query.lastError().text();
+        usernameValue->setText("User " + QString::number(user_id));
+        pointsValue->setText("0");
+        clubsJoinedValue->setText("0");
+    }
+}
+
+// Add this helper method to create a circular pixmap for the navigation bar:
+QPixmap MProfilePage::createCircularPixmap(const QPixmap& pixmap, int size)
+{
+    QPixmap scaledPixmap = pixmap.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+    QPixmap roundedPixmap(size, size);
+    roundedPixmap.fill(Qt::transparent);
+
+    QPainter painter(&roundedPixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(QBrush(scaledPixmap));
+    painter.drawEllipse(0, 0, size, size);
+
+    return roundedPixmap;
+}
+
+void MProfilePage::loadClubRankings()
+{
+    // Clear existing rankings
+    QLayoutItem* item;
+    while ((item = rankingsLayout->takeAt(0)) != nullptr) {
+        if (QWidget* widget = item->widget()) {
+            widget->deleteLater();
+        }
+        delete item;
+    }
+
+    QFont regularFont;
+    regularFont.setPointSize(11);
+    QFont valueFont;
+    valueFont.setPointSize(11);
+
+    // For now, we'll just display the joined club names
+    bool isFirst = true;
+    for (int clubId : joinedClubs) {
+        QSqlQuery clubQuery;
+        clubQuery.prepare("SELECT club_name FROM clubs_list WHERE club_id = :clubId");
+        clubQuery.bindValue(":clubId", clubId);
+
+        if (clubQuery.exec() && clubQuery.next()) {
+            QString clubName = clubQuery.value(0).toString();
+
+            // Create a widget for this club ranking
+            QWidget* rankWidget = new QWidget();
+            rankWidget->setFixedHeight(50);
+            QHBoxLayout* rankLayout = new QHBoxLayout(rankWidget);
+            rankLayout->setContentsMargins(0, 0, 0, 0);
+
+            QLabel* clubLabel = new QLabel(clubName);
+            clubLabel->setFont(regularFont);
+
+            int mRank = Database::calculateUserRankInClub(user_id,clubId);
+            QLabel* rankValue = new QLabel("Rank : "+QString::number(mRank)); // Placeholder ranking
+            rankValue->setFont(valueFont);
+            rankValue->setAlignment(Qt::AlignRight);
+
+            rankLayout->addWidget(clubLabel);
+            rankLayout->addStretch(1);
+            rankLayout->addWidget(rankValue);
+
+            // Add to layout
+            rankingsLayout->addWidget(rankWidget);
+
+            // Add separator line (except for the last item)
+            if (!isFirst) {
+                QFrame* rankLine = new QFrame();
+                rankLine->setFrameShape(QFrame::HLine);
+                rankLine->setFrameShadow(QFrame::Sunken);
+                rankLine->setStyleSheet("background-color: #cccccc;");
+                rankLine->setFixedHeight(1);
+                rankingsLayout->addWidget(rankLine);
+            }
+            isFirst = false;
+        }
+    }
+
+    // If no clubs are joined, display a message
+    if (joinedClubs.isEmpty()) {
+        QLabel* noClubsLabel = new QLabel("You haven't joined any clubs yet.");
+        noClubsLabel->setAlignment(Qt::AlignCenter);
+        rankingsLayout->addWidget(noClubsLabel);
+    }
+
+    // Add stretch to keep widgets at the top
+    rankingsLayout->addStretch(1);
+}
+
+void MProfilePage::updateProfilePicture(const QPixmap &pixmap)
+{
+    // Scale the pixmap to fit the label
+    QPixmap scaledPixmap = pixmap.scaled(120, 120, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+    // Create a circular mask
+    QBitmap mask(120, 120);
+    mask.fill(Qt::white);
+    QPainter painter(&mask);
+    painter.setBrush(Qt::black);
+    painter.drawEllipse(0, 0, 120, 120);
+
+    // Apply the mask to make the image circular
+    scaledPixmap.setMask(mask);
+    profilePicWidget->setPixmap(scaledPixmap);
+}
+
+void MProfilePage::editProfileImage()
+{
+    QString fileName = QFileDialog::getOpenFileName(this,
+                                                    tr("Select Profile Picture"),
+                                                    "",
+                                                    tr("Image Files (*.png *.jpg *.jpeg *.bmp)"));
+    if (!fileName.isEmpty()) {
+        QPixmap newPixmap(fileName);
+        if (!newPixmap.isNull()) {
+            // Update the profile picture
+            m_profilePixmap = newPixmap;
+            updateProfilePicture(m_profilePixmap);
+
+            // Update the profile icon in the nav bar
+            if (!profileIcon->icon().isNull()) {
+                profileIcon->setIcon(QIcon(newPixmap));
+            }
+
+            // Save to database
+            saveProfileImageToDatabase();
+        }
+    }
+}
+
+void MProfilePage::saveProfileImageToDatabase()
+{
+    QByteArray imageData;
+    QBuffer buffer(&imageData);
+    buffer.open(QIODevice::WriteOnly);
+    m_profilePixmap.save(&buffer, "PNG");
+
+    QSqlQuery query;
+    query.prepare("UPDATE users_list SET profile_photo = :photo WHERE user_id = :userId");
+    query.bindValue(":photo", imageData);
+    query.bindValue(":userId", user_id);
+
+    if (!query.exec()) {
+        qDebug() << "Failed to save profile image:" << query.lastError().text();
+        QMessageBox::warning(this, tr("Error"), tr("Failed to save profile image to database."));
+    }
+}
+
+void MProfilePage::editUsername()
+{
+    bool ok;
+    QString newName = QInputDialog::getText(this, tr("Edit Username"),
+                                            tr("Enter new username:"), QLineEdit::Normal,
+                                            userName, &ok);
+    if (ok && !newName.isEmpty()) {
+        userName = newName;
+        usernameValue->setText(newName);
+
+        // Save to database
+        QSqlQuery query;
+        query.prepare("UPDATE users_list SET name = :name WHERE user_id = :userId");
+        query.bindValue(":name", newName);
+        query.bindValue(":userId", user_id);
+
+        if (!query.exec()) {
+            qDebug() << "Failed to update username:" << query.lastError().text();
+            QMessageBox::warning(this, tr("Error"), tr("Failed to save username to database."));
+        }
+    }
 }
 
 void MProfilePage::homeClicked()
