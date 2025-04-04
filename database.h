@@ -13,6 +13,7 @@
 #include <QVector>
 #include <QRandomGenerator>
 #include<QDateTime>
+#include "Mainwindow.h"
 
 
 class Database {
@@ -316,23 +317,23 @@ public:
 
         // Sample data - replace with your actual student data
         QVector<QPair<int, QString>> studentData = {
-                                                    {67011073, "Adisorn Numpradit"}, {67011078, "Bhawat Kolkitchaiwan"},
-                                                    {67011091, "Chananyu Chinnawuth"}, {67011093, "Chavit Saritdeechakul"}, {67011096, "Chayut Panangkasiri"}, {67011100, "Chirawad Koollachote"}, {67011110, "Ekboonya Srisook"},
-                                                    {67011118, "Hsu Myat Shwe Sin"}, {67011117, "Khanin Chuanchaisit"}, {67011152, "Koses Suvarnasuddhi"}, {67011158, "Kyi Thant Sin"}, {67011177, "Napatrawee Chieowwitt"},
-                                                    {67011112, "Nuttamon Ketkaeo"}, {67011236, "Pannawhiz Pipatmunkong"}, {67011258, "Paphavee Yanmook"}, {67011273, "Payut Kapasuwan"}, {67011287, "Ramida Laphashopkin"},
-                                                    {67011297, "Sarun Rattanapan"}, {67011300, "Singhayapol Kliengma"}, {67011302, "Sirapot Satarntraipope"}, {67011318, "Supichaya Ratanaopas"}, {67011322, "Suwitchaya Chintawan"},
-                                                    {67011335, "Thanaphat Chongkananu"}, {67011352, "Theepakorn Phayonrat"}, {67011362, "Theepakon Khwanna"}, {67011372, "Thunthanut Teemaethaw"}, {67011371, "Virithpol Thara"},
-                                                    {67011596, "Han Ni Aung"}, {67011614, "Korapat Tripatarasit"}, {67011615, "La Min Maung"}, {67011619, "May Nyein Chan"}, {67011627, "Nopparath Nonraksanuk"}, {67011629, "Norrapat Nimdit"},
-                                                    {67011638, "Pasu"}, {67011653, "Phone Myat Pyae Sone"}, {67011659, "Saw Zi Dunn"}, {67011685, "Bhanuwat Swadsidsri"}, {67011725, "San Aung"}, {67011731, "Thiri Thaw"},
-                                                    {67011755, "Phoo Pwint Cho Thar"},  {66010599, "Arhway Larhuna"}, {66010968, "Bowornthat Chiangthong"}, {66010998, "Cusson Laohapatanawong"},
-                                                    {66010991, "Diyaan Pulikkal"}, {66011008, "Jirawatt Chimanee"}, {66011014, "Kant Isaranuchheep"}, {66011036, "Kongfah Sangchaisirisak"}, {66011702, "Naphat Umpa"}, {66011800, "Natavee Pecharat"},
-                                                    {66011801, "Natchapon Sukthep"}, {66011805, "Nay Chi Shunn Lei"}, {66011807, "Nutthhapat Chaloemlarpsombut"}, {66011107, "Panchaya Wejchapinant"}, {66011131, "Pannatat Sribusarakkham"},
-                                                    {66011174, "Pannawat Yorkhant"}, {66011123, "Parin Vessakosol"}, {66011147, "Phatdanai Khemanukul"}, {66011148, "Phathompol Siripichaiprom"},
-                                                    {66011149, "Phatthadon Sornplang"}, {66011167, "Piraya Noorit"}, {66011177, "Rachata Phondi"}, {66011193, "Rachatawan Sudjarid"}, {66011203, "Sai Marn Pha"},
-                                                    {66011211, "Sarita Manopatana"}, {66011215, "Satikit Tapbumrong"}, {66011217, "Shisa Klaysuban"}, {66011231, "Sorasich Lertwerasirikul"}, {66011244, "Syril Tuladhar"},
-                                                    {66011245, "Tada Siangchin"}, {66011249, "Tanakrit Doltanakarn"}, {66011276, "Thunyaphon Chumkasian"}, {66011277, "Thuwanon Siddhichai"}, {66011288, "Vichaya Roongsiripornphol"},
-                                                    {66011301, "Xanin Sae Ma"}, {66011525, "Audthanee Supeeramongkolkul"}, {66011533, "Eaint Kay Khaing Kyaw"}, {66011534, "Ei Myat Nwe"}, {66011564, "Panisara Yimcharoen"},
-                                                    {66011580, "Phurirat Punmerod"}, {66011582, "Pongchanan Sriwanna"}, {66011606, "Thura Aung"}
+            {67011073, "Adisorn Numpradit"}, {67011078, "Bhawat Kolkitchaiwan"},
+            {67011091, "Chananyu Chinnawuth"}, {67011093, "Chavit Saritdeechakul"}, {67011096, "Chayut Panangkasiri"}, {67011100, "Chirawad Koollachote"}, {67011110, "Ekboonya Srisook"},
+            {67011118, "Hsu Myat Shwe Sin"}, {67011117, "Khanin Chuanchaisit"}, {67011152, "Koses Suvarnasuddhi"}, {67011158, "Kyi Thant Sin"}, {67011177, "Napatrawee Chieowwitt"},
+            {67011112, "Nuttamon Ketkaeo"}, {67011236, "Pannawhiz Pipatmunkong"}, {67011258, "Paphavee Yanmook"}, {67011273, "Payut Kapasuwan"}, {67011287, "Ramida Laphashopkin"},
+            {67011297, "Sarun Rattanapan"}, {67011300, "Singhayapol Kliengma"}, {67011302, "Sirapot Satarntraipope"}, {67011318, "Supichaya Ratanaopas"}, {67011322, "Suwitchaya Chintawan"},
+            {67011335, "Thanaphat Chongkananu"}, {67011352, "Theepakorn Phayonrat"}, {67011362, "Theepakon Khwanna"}, {67011372, "Thunthanut Teemaethaw"}, {67011371, "Virithpol Thara"},
+            {67011596, "Han Ni Aung"}, {67011614, "Korapat Tripatarasit"}, {67011615, "La Min Maung"}, {67011619, "May Nyein Chan"}, {67011627, "Nopparath Nonraksanuk"}, {67011629, "Norrapat Nimdit"},
+            {67011638, "Pasu"}, {67011653, "Phone Myat Pyae Sone"}, {67011659, "Saw Zi Dunn"}, {67011685, "Bhanuwat Swadsidsri"}, {67011725, "San Aung"}, {67011731, "Thiri Thaw"},
+            {67011755, "Phoo Pwint Cho Thar"},  {66010599, "Arhway Larhuna"}, {66010968, "Bowornthat Chiangthong"}, {66010998, "Cusson Laohapatanawong"},
+            {66010991, "Diyaan Pulikkal"}, {66011008, "Jirawatt Chimanee"}, {66011014, "Kant Isaranuchheep"}, {66011036, "Kongfah Sangchaisirisak"}, {66011702, "Naphat Umpa"}, {66011800, "Natavee Pecharat"},
+            {66011801, "Natchapon Sukthep"}, {66011805, "Nay Chi Shunn Lei"}, {66011807, "Nutthhapat Chaloemlarpsombut"}, {66011107, "Panchaya Wejchapinant"}, {66011131, "Pannatat Sribusarakkham"},
+            {66011174, "Pannawat Yorkhant"}, {66011123, "Parin Vessakosol"}, {66011147, "Phatdanai Khemanukul"}, {66011148, "Phathompol Siripichaiprom"},
+            {66011149, "Phatthadon Sornplang"}, {66011167, "Piraya Noorit"}, {66011177, "Rachata Phondi"}, {66011193, "Rachatawan Sudjarid"}, {66011203, "Sai Marn Pha"},
+            {66011211, "Sarita Manopatana"}, {66011215, "Satikit Tapbumrong"}, {66011217, "Shisa Klaysuban"}, {66011231, "Sorasich Lertwerasirikul"}, {66011244, "Syril Tuladhar"},
+            {66011245, "Tada Siangchin"}, {66011249, "Tanakrit Doltanakarn"}, {66011276, "Thunyaphon Chumkasian"}, {66011277, "Thuwanon Siddhichai"}, {66011288, "Vichaya Roongsiripornphol"},
+            {66011301, "Xanin Sae Ma"}, {66011525, "Audthanee Supeeramongkolkul"}, {66011533, "Eaint Kay Khaing Kyaw"}, {66011534, "Ei Myat Nwe"}, {66011564, "Panisara Yimcharoen"},
+            {66011580, "Phurirat Punmerod"}, {66011582, "Pongchanan Sriwanna"}, {66011606, "Thura Aung"}
         };
 
         // Begin transaction for faster insertion of multiple rows
@@ -387,6 +388,487 @@ public:
 
         return QString(); // Return empty string if name not found
 
+    }
+
+
+
+    // Calculate a user's ranking within a club based on points (using dense ranking)
+    static int calculateUserRankInClub(int userId, int clubId) {
+        if (userId == 67001922) {
+            return 0; // Admin is not ranked
+        }
+
+        QSqlQuery query;
+
+        // First check if the user is the club leader
+        query.prepare("SELECT leader_id FROM clubs_list WHERE club_id = :clubId");
+        query.bindValue(":clubId", clubId);
+
+        if (query.exec() && query.next()) {
+            int leaderId = query.value(0).toInt();
+            if (userId == leaderId) {
+                return 0; // Club leader is not ranked
+            }
+        }
+
+        // Get club members
+        query.prepare("SELECT club_members FROM clubs_list WHERE club_id = :clubId");
+        query.bindValue(":clubId", clubId);
+
+        if (!query.exec() || !query.next()) {
+            qDebug() << "Error getting club members:" << query.lastError().text();
+            return -1;
+        }
+
+        QString serializedMembers = query.value(0).toString();
+        QVector<int> memberIds = deserializeUserIds(serializedMembers);
+
+        // Get points for all members
+        QVector<QPair<int, int>> memberPoints; // userId, points
+
+        for (int memberId : memberIds) {
+            // Skip leader and admin
+            if (memberId == 67001922) {
+                continue;
+            }
+
+            // Check if member is a leader
+            query.prepare("SELECT COUNT(*) FROM clubs_list WHERE leader_id = :leaderId");
+            query.bindValue(":leaderId", memberId);
+
+            bool isLeader = false;
+            if (query.exec() && query.next()) {
+                isLeader = query.value(0).toInt() > 0;
+            }
+
+            if (isLeader) {
+                continue;
+            }
+
+            // Get member points
+            query.prepare("SELECT points FROM users_list WHERE user_id = :userId");
+            query.bindValue(":userId", memberId);
+
+            if (query.exec() && query.next()) {
+                int points = query.value(0).toInt();
+                memberPoints.append(qMakePair(memberId, points));
+            }
+        }
+
+        // Sort by points in descending order
+        std::sort(memberPoints.begin(), memberPoints.end(),
+                  [](const QPair<int, int>& a, const QPair<int, int>& b) {
+                      return a.second > b.second;
+                  });
+
+        // Handle ties with dense ranking (1,1,2,3,3,4)
+        if (memberPoints.isEmpty()) {
+            return -1;
+        }
+
+        // Assign dense ranks
+        QVector<int> ranks(memberPoints.size());
+        ranks[0] = 1; // First rank is always 1
+
+        for (int i = 1; i < memberPoints.size(); i++) {
+            if (memberPoints[i].second == memberPoints[i-1].second) {
+                // Same points as previous, assign same rank
+                ranks[i] = ranks[i-1];
+            } else {
+                // Different points, assign rank = current distinct value count
+                ranks[i] = ranks[i-1] + 1;
+            }
+        }
+
+        // Find the user's rank
+        for (int i = 0; i < memberPoints.size(); i++) {
+            if (memberPoints[i].first == userId) {
+                return ranks[i];
+            }
+        }
+
+        return -1; // User not found in the club
+    }
+
+    // Calculate a club's ranking among all clubs based on total points (using dense ranking)
+    static int calculateClubRanking(int clubId) {
+        QSqlQuery query;
+
+        // Get all clubs
+        if (!query.exec("SELECT club_id FROM clubs_list")) {
+            qDebug() << "Error getting clubs:" << query.lastError().text();
+            return -1;
+        }
+
+        QVector<int> allClubIds;
+        while (query.next()) {
+            allClubIds.append(query.value(0).toInt());
+        }
+
+        // Calculate total points for each club
+        QVector<QPair<int, int>> clubPoints; // clubId, totalPoints
+
+        for (int cId : allClubIds) {
+            int totalPoints = calculateClubTotalPoints(cId);
+            clubPoints.append(qMakePair(cId, totalPoints));
+        }
+
+        // Sort by points in descending order
+        std::sort(clubPoints.begin(), clubPoints.end(),
+                  [](const QPair<int, int>& a, const QPair<int, int>& b) {
+                      return a.second > b.second;
+                  });
+
+        // Handle ties with dense ranking
+        if (clubPoints.isEmpty()) {
+            return -1;
+        }
+
+        // Assign dense ranks
+        QVector<int> ranks(clubPoints.size());
+        ranks[0] = 1; // First rank is always 1
+
+        for (int i = 1; i < clubPoints.size(); i++) {
+            if (clubPoints[i].second == clubPoints[i-1].second) {
+                // Same points as previous, assign same rank
+                ranks[i] = ranks[i-1];
+            } else {
+                // Different points, assign next distinct rank
+                ranks[i] = ranks[i-1] + 1;
+            }
+        }
+
+        // Find the club's rank
+        for (int i = 0; i < clubPoints.size(); i++) {
+            if (clubPoints[i].first == clubId) {
+                return ranks[i];
+            }
+        }
+
+        return -1; // Club not found
+    }
+
+    // Calculate total points for a club (excluding leader and admin)
+    static int calculateClubTotalPoints(int clubId) {
+        QSqlQuery query;
+
+        // Get club leader
+        query.prepare("SELECT leader_id FROM clubs_list WHERE club_id = :clubId");
+        query.bindValue(":clubId", clubId);
+
+        int leaderId = -1;
+        if (query.exec() && query.next()) {
+            leaderId = query.value(0).toInt();
+        }
+
+        // Get club members
+        query.prepare("SELECT club_members FROM clubs_list WHERE club_id = :clubId");
+        query.bindValue(":clubId", clubId);
+
+        if (!query.exec() || !query.next()) {
+            qDebug() << "Error getting club members:" << query.lastError().text();
+            return 0;
+        }
+
+        QString serializedMembers = query.value(0).toString();
+        QVector<int> memberIds = deserializeUserIds(serializedMembers);
+
+        // Calculate total points
+        int totalPoints = 0;
+
+        for (int memberId : memberIds) {
+            // Skip leader and admin
+            if (memberId == leaderId || memberId == 67001922) {
+                continue;
+            }
+
+            // Check if member is a leader of another club
+            query.prepare("SELECT COUNT(*) FROM clubs_list WHERE leader_id = :leaderId");
+            query.bindValue(":leaderId", memberId);
+
+            bool isLeader = false;
+            if (query.exec() && query.next()) {
+                isLeader = query.value(0).toInt() > 0;
+            }
+
+            if (isLeader) {
+                continue;
+            }
+
+            // Get member points
+            query.prepare("SELECT points FROM users_list WHERE user_id = :userId");
+            query.bindValue(":userId", memberId);
+
+            if (query.exec() && query.next()) {
+                totalPoints += query.value(0).toInt();
+            }
+        }
+
+        return totalPoints;
+    }
+
+    // Get clubs sorted by total points (descending) with dense ranking
+    static QVector<QPair<int, QPair<QString, int>>> getClubsWithRank() {
+        QSqlQuery query;
+
+        // Get all clubs
+        if (!query.exec("SELECT club_id, club_name FROM clubs_list")) {
+            qDebug() << "Error getting clubs:" << query.lastError().text();
+            return QVector<QPair<int, QPair<QString, int>>>();
+        }
+
+        QVector<QPair<int, QString>> clubs; // clubId, clubName
+        while (query.next()) {
+            int clubId = query.value(0).toInt();
+            QString clubName = query.value(1).toString();
+            clubs.append(qMakePair(clubId, clubName));
+        }
+
+        // Calculate points for each club and create vector of (clubId, (clubName, points))
+        QVector<QPair<int, QPair<QString, int>>> clubsWithPoints;
+
+        for (const auto& club : clubs) {
+            int points = calculateClubTotalPoints(club.first);
+            clubsWithPoints.append(qMakePair(club.first, qMakePair(club.second, points)));
+        }
+
+        // Sort by points in descending order
+        std::sort(clubsWithPoints.begin(), clubsWithPoints.end(),
+                  [](const QPair<int, QPair<QString, int>>& a, const QPair<int, QPair<QString, int>>& b) {
+                      return a.second.second > b.second.second;
+                  });
+
+        // Apply dense ranking
+        QVector<QPair<int, QPair<QString, int>>> clubsWithRank; // clubId, (clubName, rank)
+
+        if (!clubsWithPoints.isEmpty()) {
+            int currentRank = 1;
+            int previousPoints = clubsWithPoints[0].second.second;
+
+            for (int i = 0; i < clubsWithPoints.size(); i++) {
+                int clubId = clubsWithPoints[i].first;
+                QString clubName = clubsWithPoints[i].second.first;
+                int points = clubsWithPoints[i].second.second;
+
+                if (i > 0 && points < previousPoints) {
+                    currentRank++; // Only increment rank if points are different
+                }
+
+                clubsWithRank.append(qMakePair(clubId, qMakePair(clubName, currentRank)));
+                previousPoints = points;
+            }
+        }
+
+        return clubsWithRank;
+    }
+
+    // Get members sorted by points (descending) with dense ranking
+    static QVector<QPair<int, QPair<QString, int>>> getMembersWithRank(int clubId) {
+        QSqlQuery query;
+
+        // Get club leader
+        query.prepare("SELECT leader_id FROM clubs_list WHERE club_id = :clubId");
+        query.bindValue(":clubId", clubId);
+
+        int leaderId = -1;
+        if (query.exec() && query.next()) {
+            leaderId = query.value(0).toInt();
+        }
+
+        // Get club members
+        query.prepare("SELECT club_members FROM clubs_list WHERE club_id = :clubId");
+        query.bindValue(":clubId", clubId);
+
+        if (!query.exec() || !query.next()) {
+            qDebug() << "Error getting club members:" << query.lastError().text();
+            return QVector<QPair<int, QPair<QString, int>>>();
+        }
+
+        QString serializedMembers = query.value(0).toString();
+        QVector<int> memberIds = deserializeUserIds(serializedMembers);
+
+        // Get member info with points
+        QVector<QPair<int, QPair<QString, int>>> memberInfo; // (userId, (name, points))
+
+        for (int memberId : memberIds) {
+            // Skip leader and admin
+            if (memberId == leaderId || memberId == 67001922) {
+                continue;
+            }
+
+            // Check if member is a leader of another club
+            query.prepare("SELECT COUNT(*) FROM clubs_list WHERE leader_id = :leaderId");
+            query.bindValue(":leaderId", memberId);
+
+            bool isLeader = false;
+            if (query.exec() && query.next()) {
+                isLeader = query.value(0).toInt() > 0;
+            }
+
+            if (isLeader) {
+                continue;
+            }
+
+            // Get member name and points
+            query.prepare("SELECT name, points FROM users_list WHERE user_id = :userId");
+            query.bindValue(":userId", memberId);
+
+            if (query.exec() && query.next()) {
+                QString name = query.value(0).toString();
+                int points = query.value(1).toInt();
+                memberInfo.append(qMakePair(memberId, qMakePair(name, points)));
+            }
+        }
+
+        // Sort by points in descending order
+        std::sort(memberInfo.begin(), memberInfo.end(),
+                  [](const QPair<int, QPair<QString, int>>& a, const QPair<int, QPair<QString, int>>& b) {
+                      return a.second.second > b.second.second;
+                  });
+
+        // Apply dense ranking
+        QVector<QPair<int, QPair<QString, int>>> membersWithRank; // userId, (name, rank)
+
+        if (!memberInfo.isEmpty()) {
+            int currentRank = 1;
+            int previousPoints = memberInfo[0].second.second;
+
+            for (int i = 0; i < memberInfo.size(); i++) {
+                int userId = memberInfo[i].first;
+                QString name = memberInfo[i].second.first;
+                int points = memberInfo[i].second.second;
+
+                if (i > 0 && points < previousPoints) {
+                    currentRank++; // Only increment rank if points are different
+                }
+
+                membersWithRank.append(qMakePair(userId, qMakePair(name, currentRank)));
+                previousPoints = points;
+            }
+        }
+
+        return membersWithRank;
+    }
+
+    // Get detailed club rankings with points and dense ranking
+    static QVector<QPair<int, QPair<QString, QPair<int, int>>>> getDetailedClubRankings() {
+        QSqlQuery query;
+
+        // Get all clubs
+        if (!query.exec("SELECT club_id, club_name FROM clubs_list")) {
+            qDebug() << "Error getting clubs:" << query.lastError().text();
+            return QVector<QPair<int, QPair<QString, QPair<int, int>>>>();
+        }
+
+        QVector<QPair<int, QString>> clubs; // clubId, clubName
+        while (query.next()) {
+            int clubId = query.value(0).toInt();
+            QString clubName = query.value(1).toString();
+            clubs.append(qMakePair(clubId, clubName));
+        }
+
+        // Calculate points for each club
+        QVector<QPair<int, QPair<QString, int>>> clubsWithPoints; // clubId, (name, points)
+
+        for (const auto& club : clubs) {
+            int points = calculateClubTotalPoints(club.first);
+            clubsWithPoints.append(qMakePair(club.first, qMakePair(club.second, points)));
+        }
+
+        // Sort by points in descending order
+        std::sort(clubsWithPoints.begin(), clubsWithPoints.end(),
+                  [](const QPair<int, QPair<QString, int>>& a, const QPair<int, QPair<QString, int>>& b) {
+                      return a.second.second > b.second.second;
+                  });
+
+        // Apply dense ranking and create detailed results
+        QVector<QPair<int, QPair<QString, QPair<int, int>>>> detailedRankings; // clubId, (name, (points, rank))
+
+        if (!clubsWithPoints.isEmpty()) {
+            int currentRank = 1;
+            int previousPoints = clubsWithPoints[0].second.second;
+
+            for (int i = 0; i < clubsWithPoints.size(); i++) {
+                int clubId = clubsWithPoints[i].first;
+                QString clubName = clubsWithPoints[i].second.first;
+                int points = clubsWithPoints[i].second.second;
+
+                if (i > 0 && points < previousPoints) {
+                    currentRank++; // Only increment rank if points are different
+                }
+
+                detailedRankings.append(qMakePair(clubId, qMakePair(clubName, qMakePair(points, currentRank))));
+                previousPoints = points;
+            }
+        }
+
+        return detailedRankings;
+    }
+
+    // Get detailed member rankings with points and dense ranking
+    static QVector<QPair<int, QPair<QString, QPair<int, int>>>> getDetailedMemberRankings() {
+        QSqlQuery query;
+
+        // Get all users
+        if (!query.exec("SELECT user_id, name , points FROM users_list")) {
+            qDebug() << "Error getting users:" << query.lastError().text();
+            return QVector<QPair<int, QPair<QString, QPair<int, int>>>>();
+        }
+
+        // Get member info with points
+        QVector<QPair<int, QPair<QString, int>>> memberInfo; // userId, (name, points)
+        while (query.next()) {
+            int userId = query.value(0).toInt();
+            QString userName = query.value(1).toString();
+            int points=query.value(2).toInt();
+            if(!isLeader(userId) && userId!=67001922){
+                memberInfo.append(qMakePair(userId, qMakePair(userName, points)));
+            }
+
+        }
+
+        // Sort by points in descending order
+        std::sort(memberInfo.begin(), memberInfo.end(),
+                  [](const QPair<int, QPair<QString, int>>& a, const QPair<int, QPair<QString, int>>& b) {
+                      return a.second.second > b.second.second;
+                  });
+
+        // Apply dense ranking and create detailed results
+        QVector<QPair<int, QPair<QString, QPair<int, int>>>> detailedRankings; // userId, (name, (points, rank))
+
+        if (!memberInfo.isEmpty()) {
+            int currentRank = 1;
+            int previousPoints = memberInfo[0].second.second;
+
+            for (int i = 0; i < memberInfo.size(); i++) {
+                int userId = memberInfo[i].first;
+                QString name = memberInfo[i].second.first;
+                int points = memberInfo[i].second.second;
+
+                if (i > 0 && points < previousPoints) {
+                    currentRank++; // Only increment rank if points are different
+                }
+
+                detailedRankings.append(qMakePair(userId, qMakePair(name, qMakePair(points, currentRank))));
+                previousPoints = points;
+            }
+        }
+
+        return detailedRankings;
+    }
+
+     static bool isLeader(int userId)
+    {
+        QSqlQuery query;
+        query.prepare("SELECT COUNT(*) FROM clubleaders_list WHERE leader_id = :id");
+        query.bindValue(":id", userId);
+
+        if (query.exec() && query.next()) {
+            return query.value(0).toInt() > 0;
+        }
+
+        qDebug() << "Error checking leader status:" << query.lastError().text();
+        return false;
     }
 
 
