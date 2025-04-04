@@ -58,9 +58,10 @@ private:
     QLabel *goldMedal1;
     QLabel *silverMedal1;
     QLabel *bronzeMedal1;
-    QLabel *musicClubLabel;
-    QLabel *basketballClubLabel;
-    QLabel *badmintonClubLabel;
+    QLabel *firstClubLabel;
+    QLabel *secondClubLabel;
+    QLabel *thirdClubLabel;
+
 
     // Top users section
     QFrame *topUsersFrame;
@@ -69,9 +70,9 @@ private:
     QLabel *goldMedal2;
     QLabel *silverMedal2;
     QLabel *bronzeMedal2;
-    QLabel *maryLabel;
-    QLabel *michelLabel;
-    QLabel *christinaLabel;
+    QLabel *firstUserLabel;
+    QLabel *secondUserLabel;
+    QLabel *thirdUserLabel;
 
     // Navigation
     QFrame *navigationFrame;
