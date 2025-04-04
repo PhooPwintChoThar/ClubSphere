@@ -146,7 +146,7 @@ EventCard::EventCard(const QString& clubName, const QDateTime& dateTime,
 
                 // Center the image in the square frame
                 QPixmap centeredPixmap(40, 40);
-                centeredPixmap.fill(Qt::lightGray);
+                centeredPixmap.fill(Qt::white);
 
                 QPainter painter(&centeredPixmap);
                 // Calculate position to center the image
@@ -209,7 +209,7 @@ EventCard::EventCard(const QString& clubName, const QDateTime& dateTime,
             m_eventImageLabel = new QLabel(this);
             m_eventImageLabel->setFixedHeight(280);
             m_eventImageLabel->setAlignment(Qt::AlignCenter);
-            m_eventImageLabel->setStyleSheet("background-color: #f5f5f5; border-radius: 5px;");
+            m_eventImageLabel->setStyleSheet("background-color: white; border-radius: 5px;");
             m_eventImageLabel->setPixmap(pixmap.scaled(335, 280, Qt::KeepAspectRatio, Qt::SmoothTransformation));
         }
     }
@@ -217,9 +217,8 @@ EventCard::EventCard(const QString& clubName, const QDateTime& dateTime,
     // 4. FOOTER LAYOUT
     QHBoxLayout* footerLayout = new QHBoxLayout();
 
-    // Going button
-    m_goingButton = new QPushButton("Going", this);
-    m_goingButton->setStyleSheet("QPushButton { border: 1px solid #ddd; border-radius: 15px; padding: 5px 10px; }");
+    m_goingLabel = new QLabel("Going", this);
+    m_goingLabel->setStyleSheet("font-weight: bold; background-color: transparent; padding: 5px 10px;");
 
     // Going count
     m_goingCountLabel = new QLabel(QString::number(goingCount), this);
@@ -229,7 +228,7 @@ EventCard::EventCard(const QString& clubName, const QDateTime& dateTime,
     m_deleteButton = new QPushButton("Delete", this);
     m_deleteButton->setStyleSheet("QPushButton { border: 1px solid #ddd; border-radius: 15px; padding: 5px 10px; color: red; }");
 
-    footerLayout->addWidget(m_goingButton);
+    footerLayout->addWidget(m_goingLabel);
     footerLayout->addWidget(m_goingCountLabel);
     footerLayout->addStretch();
     footerLayout->addWidget(m_deleteButton);
@@ -262,7 +261,7 @@ void EventCard::onDeleteClicked()
 }
 
 // LHomepage implementation
- LHomepage::LHomepage(int leaderId, QWidget *parent)
+LHomepage::LHomepage(int leaderId, QWidget *parent)
     : QWidget(parent), m_leaderId(leaderId)
 {
     // Find the club associated with this leader
@@ -289,7 +288,6 @@ LHomepage::~LHomepage()
 
 void LHomepage::setupUI()
 {
-    // Main layout
     m_mainLayout = new QVBoxLayout(this);
     m_mainLayout->setContentsMargins(0, 0, 0, 0);
     m_mainLayout->setSpacing(0);
@@ -532,5 +530,5 @@ void LHomepage::onNotificationButtonClicked()
 
 void LHomepage::onAchievementButtonClicked()
 {
-    emit showLeaderboard();
+    emit showLeaderboard(m_clubId);
 }
