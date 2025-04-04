@@ -208,7 +208,8 @@ void MEventCard::onGoingClicked()
                 }
 
                 // Decrement going count for event
-                query.prepare("UPDATE events_list SET event_going_count = GREATEST(event_going_count - 1, 0) WHERE event_id = :eventId");
+                // FIXED: The GREATEST function in SQL requires a parameter binding, but wasn't given one
+                query.prepare("UPDATE events_list SET event_going_count = event_going_count - 1 WHERE event_id = :eventId");
                 query.bindValue(":eventId", m_eventId);
 
                 if (!query.exec()) {
@@ -226,9 +227,10 @@ void MEventCard::onGoingClicked()
                 QMessageBox::information(this, "Updated", "You're no longer going to this event.");
             }
         }
+    } else {
+        qDebug() << "Error fetching user's going events:" << query.lastError().text();
     }
 }
-
 
 MEventPage::MEventPage(int clubId,int userId, QWidget *parent)
     : QWidget(parent), m_clubId(clubId), user_id(userId)
@@ -330,60 +332,6 @@ void MEventPage::setupUI()
 
     m_scrollArea->setWidget(m_scrollContent);
 
-    // Bottom navigation bar (similar to MHomepage)
-    QWidget* bottomNavBar = new QWidget();
-    bottomNavBar->setFixedHeight(60);
-    bottomNavBar->setStyleSheet("background-color: white; border-top: 1px solid #e0e0e0;");
-
-    QHBoxLayout* bottomNavLayout = new QHBoxLayout(bottomNavBar);
-    bottomNavLayout->setContentsMargins(10, 5, 10, 5);
-    bottomNavLayout->setSpacing(0);
-
-    // Create navigation buttons
-    // Home icon
-    QPushButton* homeIcon = new QPushButton();
-    homeIcon->setIcon(QIcon(":/images/resources/home_logo.png"));
-    homeIcon->setIconSize(QSize(24, 24));
-    homeIcon->setFixedSize(40, 40);
-    homeIcon->setStyleSheet("QPushButton { background-color: transparent; border: none; }");
-
-    // Club icon
-    QPushButton* clubIcon = new QPushButton();
-    clubIcon->setIcon(QIcon(":/images/resources/club_logo.png"));
-    clubIcon->setIconSize(QSize(24, 24));
-    clubIcon->setFixedSize(40, 40);
-    clubIcon->setStyleSheet("QPushButton { background-color: transparent; border: none; }");
-
-    // Event icon
-    QPushButton* eventIcon = new QPushButton();
-    eventIcon->setIcon(QIcon(":/images/resources/event.png"));
-    eventIcon->setIconSize(QSize(24, 24));
-    eventIcon->setFixedSize(40, 40);
-    eventIcon->setStyleSheet("QPushButton { background-color: transparent; border: none; }");
-
-    // Profile icon
-    QPushButton* profileIcon = new QPushButton();
-    profileIcon->setIcon(QIcon(":/images/resources/user.png"));
-    profileIcon->setIconSize(QSize(24, 24));
-    profileIcon->setFixedSize(40, 40);
-    profileIcon->setStyleSheet("QPushButton { background-color: transparent; border: none; }");
-
-    // Add navigation buttons to layout
-    bottomNavLayout->addStretch(1);
-    bottomNavLayout->addWidget(homeIcon);
-    bottomNavLayout->addStretch(1);
-    bottomNavLayout->addWidget(clubIcon);
-    bottomNavLayout->addStretch(1);
-    bottomNavLayout->addWidget(eventIcon);
-    bottomNavLayout->addStretch(1);
-    bottomNavLayout->addWidget(profileIcon);
-    bottomNavLayout->addStretch(1);
-
-    // Connect navigation buttons
-    connect(homeIcon, &QPushButton::clicked, this, &MEventPage::navigateToHome);
-    connect(clubIcon, &QPushButton::clicked, this, &MEventPage::navigateToClub);
-    connect(eventIcon, &QPushButton::clicked, this, &MEventPage::navigateToClub); // Could be a dedicated event page
-    connect(profileIcon, &QPushButton::clicked, this, &MEventPage::navigateToClub); // Profile page
 
     // Connect back button signal
     connect(backBtn, &QPushButton::clicked, this, &MEventPage::navigateToClub);
@@ -393,7 +341,7 @@ void MEventPage::setupUI()
     m_mainLayout->addWidget(titleWidget);
     m_mainLayout->addWidget(line);
     m_mainLayout->addWidget(m_scrollArea, 1);
-    m_mainLayout->addWidget(bottomNavBar);
+
 
     // Set fixed width to match window size
     setFixedWidth(350);
