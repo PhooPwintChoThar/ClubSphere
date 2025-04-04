@@ -1,191 +1,273 @@
-#include "adminClub.h"
+#include "adminHome.h"
 #include <QPixmap>
 #include <QIcon>
-#include <QDebug>
 #include <QPainter>
+#include <QDateTime>
+#include <QWidget>
+#include <QDebug>
 #include <QSqlQuery>
 #include <QSqlError>
-#include <QMessageBox>
+#include <QDebug>
+#include<database.h>
 
-AdminClub::AdminClub(QWidget *parent) : QWidget(parent)
+AdminHome::AdminHome(QWidget *parent) : QWidget(parent)
 {
+    Database::initialize();
     setupUI();
-    setupClubList();
+    setupStatsSection();
+    setupTopClubsSection();
+    setupTopUsersSection();
     setupNavigation();
-    setupSearchFunctionality();
 }
 
-AdminClub::~AdminClub()
+AdminHome::~AdminHome()
 {
 }
 
-void AdminClub::setupUI()
+void AdminHome::setupUI()
 {
-    // Set background color to white and keep window size
+    // Set background color to white and fix window size
     this->setStyleSheet("background-color: white;");
-    this->setFixedSize(350, 650);  // Keep same size
+    this->setFixedSize(350, 650);
 
-    // Main layout setup with reduced margins and spacing
+    // Main layout setup
     mainLayout = new QVBoxLayout(this);
     mainLayout->setAlignment(Qt::AlignTop);
-    mainLayout->setContentsMargins(15, 15, 15, 10);  // Further reduced margins
-    mainLayout->setSpacing(8);  // Further reduced spacing
+    mainLayout->setContentsMargins(20, 30, 20, 20);
+    mainLayout->setSpacing(15);
 
-    // Title with smaller font
-    titleLabel = new QLabel("Clubsphere", this);
-    titleLabel->setFont(QFont("Arial", 14, QFont::Bold));  // Reduced font size
-    titleLabel->setAlignment(Qt::AlignCenter);
+    // Title
+    titleLabel = new QLabel("Welcome to\nClubsphere!", this);
+    titleLabel->setFont(QFont("Arial", 24, QFont::Bold));
+    titleLabel->setAlignment(Qt::AlignLeft);
+
     mainLayout->addWidget(titleLabel);
-
-    // Search bar with reduced height
-    searchFrame = new QFrame(this);
-    searchFrame->setFrameShape(QFrame::StyledPanel);
-    searchFrame->setStyleSheet("QFrame { background-color: #F0F0F0; border-radius: 10px; }");  // Reduced radius
-
-    QHBoxLayout *searchLayout = new QHBoxLayout(searchFrame);
-    searchLayout->setContentsMargins(10, 5, 10, 5);  // Further reduced padding
-
-    QLabel *searchIcon = new QLabel(this);
-    searchIcon->setPixmap(QIcon(":/images/resources/search_logo.png").pixmap(16, 16));  // Smaller icon
-
-    searchEdit = new QLineEdit(this);
-    searchEdit->setPlaceholderText("Search");
-    searchEdit->setStyleSheet("QLineEdit { border: none; background-color: transparent; }");
-
-    searchLayout->addWidget(searchIcon);
-    searchLayout->addWidget(searchEdit);
-    searchFrame->setFixedHeight(35);  // Explicitly set smaller height
-
-    mainLayout->addWidget(searchFrame);
-
-    // Clubs label and add button - reduced size
-    clubsHeaderLayout = new QHBoxLayout();
-    clubsHeaderLayout->setSpacing(5);  // Reduced spacing
-
-    clubsLabel = new QLabel("Clubs:", this);
-    clubsLabel->setFont(QFont("Arial", 14, QFont::Bold));  // Smaller font
-
-    addClubButton = new QPushButton(this);
-    addClubButton->setIcon(QIcon(":/images/resources/plus_logo.png"));
-    addClubButton->setIconSize(QSize(12, 12));  // Smaller icon
-    addClubButton->setFixedSize(30, 30);  // Smaller button
-    addClubButton->setStyleSheet("QPushButton { background-color: #D9E9D8; border-radius: 15px; }");
-
-    clubsHeaderLayout->addWidget(clubsLabel);
-    clubsHeaderLayout->addStretch();
-    clubsHeaderLayout->addWidget(addClubButton);
-
-    mainLayout->addLayout(clubsHeaderLayout);
-
-    // Scroll area for club list - MODIFIED
-    scrollArea = new QScrollArea(this);
-    scrollArea->setWidgetResizable(true);
-    scrollArea->setFrameShape(QFrame::NoFrame);
-    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded); // Changed to AsNeeded
-    scrollArea->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding); // Added expanding size policy
-
-    scrollContent = new QWidget(scrollArea);
-    scrollContent->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding); // Added expanding size policy
-    clubsLayout = new QVBoxLayout(scrollContent);
-    clubsLayout->setAlignment(Qt::AlignTop);
-    clubsLayout->setContentsMargins(0, 0, 0, 0);
-    clubsLayout->setSpacing(8);  // Further reduced spacing
-
-    scrollArea->setWidget(scrollContent);
-    mainLayout->addWidget(scrollArea, 1); // Added stretch factor 1 to ensure it expands
-
-    // Connect add club button
-    connect(addClubButton, &QPushButton::clicked, this, &AdminClub::onAddClubClicked);
 }
 
-void AdminClub::setupClubList()
-{
-    // Load clubs from database
-    refreshClubList();
 
-    // Removed the stretch that was creating empty space
-    // mainLayout->addStretch();  // This line was removed
-}
 
-void AdminClub::createClubCard(const QString &name, int clubId, int members, const QString &leader)
-{
-    QFrame *clubFrame = new QFrame(this);
-    clubFrame->setFrameShape(QFrame::NoFrame);
-    clubFrame->setContentsMargins(0, 0, 0, 0);
+int AdminHome::getTotalUsersCount()
+{   Database::initialize();
+    QSqlQuery query;
+    query.prepare("SELECT COUNT(*) FROM users_list");
 
-    QHBoxLayout *cardLayout = new QHBoxLayout(clubFrame);
-    cardLayout->setContentsMargins(0, 4, 0, 4);  // Further reduced padding
-
-    // Club image - smaller size
-    QLabel *clubImage = new QLabel(this);
-    QPixmap defaultClubImage(":/images/resources/default_club.png");
-    if (defaultClubImage.isNull()) {
-        // Create a placeholder if image is not found
-        defaultClubImage = QPixmap(60, 60);  // Smaller image
-        defaultClubImage.fill(Qt::lightGray);
-
-        // Draw placeholder image icon
-        QPainter painter(&defaultClubImage);
-        painter.setPen(Qt::darkGray);
-        painter.drawRect(15, 15, 40, 30);
-        painter.drawLine(15, 20, 30, 40);
-        painter.drawEllipse(40, 20, 8, 8);
-    }
-
-    clubImage->setPixmap(defaultClubImage.scaled(60, 60, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    clubImage->setFixedSize(60, 60);  // Smaller image
-    clubImage->setStyleSheet("background-color: #E0E0E0;");
-
-    // Club info with reduced spacing
-    QVBoxLayout *infoLayout = new QVBoxLayout();
-    infoLayout->setSpacing(1);  // Minimal spacing
-
-    // Modified: Display club name with ID in smaller font
-    QString nameWithId = name + " (ID: " + QString::number(clubId) + ")";
-    QLabel *nameLabel = new QLabel(nameWithId, this);
-    nameLabel->setFont(QFont("Arial", 12, QFont::Bold));  // Smaller font
-
-    QLabel *membersLabel = new QLabel(QString::number(members) + " members", this);
-    membersLabel->setFont(QFont("Arial", 9));  // Smaller font
-
-    QLabel *leaderLabel = new QLabel("Leader: " + leader, this);
-    leaderLabel->setFont(QFont("Arial", 9));  // Smaller font
-
-    infoLayout->addWidget(nameLabel);
-    infoLayout->addWidget(membersLabel);
-    infoLayout->addWidget(leaderLabel);
-
-    // Action buttons - smaller size
-    QVBoxLayout *actionsLayout = new QVBoxLayout();
-    actionsLayout->setSpacing(4);  // Reduced spacing
-
-    QPushButton *deleteButton = new QPushButton("", this);
-    deleteButton->setIcon(QIcon(":/images/resources/trash.png"));
-    deleteButton->setIconSize(QSize(16, 16));  // Smaller icon
-    deleteButton->setFixedSize(28, 28);  // Smaller button
-    deleteButton->setStyleSheet("QPushButton { background-color: #E0E0E0; border-radius: 8px; padding: 4px; }");
-
-    actionsLayout->addWidget(deleteButton);
-
-    cardLayout->addWidget(clubImage);
-    cardLayout->addLayout(infoLayout, 1);
-    cardLayout->addLayout(actionsLayout);
-
-    clubsLayout->addWidget(clubFrame);
-
-    // Add thinner separator line except for the last item
-    if (clubsLayout->count() < 4) {
-        QFrame *line = new QFrame(this);
-        line->setFrameShape(QFrame::HLine);
-        line->setFrameShadow(QFrame::Sunken);
-        line->setStyleSheet("background-color: #E0E0E0;");
-        line->setMaximumHeight(1);
-        clubsLayout->addWidget(line);
+    if (query.exec() && query.next()) {
+        int totalUsers = query.value(0).toInt();
+        return totalUsers;
+    } else {
+        qDebug() << "Error fetching total users count:" << query.lastError().text();
+        return 0;
     }
 }
 
-void AdminClub::setupNavigation()
+int AdminHome::getTotalClubsCount()
+{   Database::initialize();
+    QSqlQuery query;
+    query.prepare("SELECT COUNT(*) FROM clubs_list");
+
+    if (query.exec() && query.next()) {
+        int totalClubs = query.value(0).toInt();
+        return totalClubs;
+    } else {
+        qDebug() << "Error fetching total clubs count:" << query.lastError().text();
+        return 0;
+    }
+}
+
+void AdminHome::setupStatsSection()
+{
+    // Stats section with two cards
+    QHBoxLayout *statsLayout = new QHBoxLayout();
+    statsLayout->setContentsMargins(0, 0, 0, 0);
+    statsLayout->setSpacing(12);
+
+    // Define fonts for stats
+    QFont statsLabelFont;
+    statsLabelFont.setBold(true);
+    statsLabelFont.setPointSize(9);
+
+    QFont countFont;
+    countFont.setBold(true);
+    countFont.setPointSize(18);
+
+    // Total Clubs card
+    clubsFrame = createRoundedFrame();
+    clubsFrame->setMinimumHeight(80);
+
+    QVBoxLayout *clubsLayout = new QVBoxLayout(clubsFrame);
+    clubsLayout->setContentsMargins(10, 10, 10, 10);
+
+    totalClubsLabel = new QLabel("Total clubs", this);
+    totalClubsLabel->setFont(statsLabelFont);
+
+    int totalClubs=getTotalClubsCount();
+    clubsCountLabel = new QLabel(QString::number(totalClubs), this);  // This can also be queried from a clubs table if exists
+    clubsCountLabel->setFont(countFont);
+
+    clubsLayout->addWidget(totalClubsLabel);
+    clubsLayout->addWidget(clubsCountLabel);
+    statsLayout->addWidget(clubsFrame);
+
+    // Total Users card
+    usersFrame = createRoundedFrame();
+    usersFrame->setMinimumHeight(80);
+
+    QVBoxLayout *usersLayout = new QVBoxLayout(usersFrame);
+    usersLayout->setContentsMargins(10, 10, 10, 10);
+
+    totalUsersLabel = new QLabel("Total Users", this);
+    totalUsersLabel->setFont(statsLabelFont);
+
+    // Get total users count from database
+    int totalUsers = getTotalUsersCount();
+    usersCountLabel = new QLabel(QString::number(totalUsers), this);
+    usersCountLabel->setFont(countFont);
+
+    usersLayout->addWidget(totalUsersLabel);
+    usersLayout->addWidget(usersCountLabel);
+    statsLayout->addWidget(usersFrame);
+
+    mainLayout->addLayout(statsLayout);
+}
+
+void AdminHome::setupTopClubsSection()
+{
+    // Top 3 Clubs section
+    topClubsFrame = createRoundedFrame();
+    topClubsFrame->setMinimumWidth(310);
+    QVBoxLayout *topClubsLayout = new QVBoxLayout(topClubsFrame);
+    topClubsLayout->setContentsMargins(15, 15, 15, 15);
+
+    thisWeekClubsLabel = new QLabel("This Week", this);
+    thisWeekClubsLabel->setFont(QFont("Arial", 10));
+
+    topClubsLabel = new QLabel("TOP 3 Clubs", this);
+    QFont topLabelFont;
+    topLabelFont.setBold(true);
+    topLabelFont.setPointSize(14);
+    topClubsLabel->setFont(topLabelFont);
+
+    // Define club font
+    QFont clubFont;
+    clubFont.setBold(true);
+    clubFont.setPointSize(10);
+
+    // Get top clubs from database
+    auto detailedClubs = Database::getDetailedClubRankings();
+
+    topClubsLayout->addWidget(thisWeekClubsLabel);
+    topClubsLayout->addWidget(topClubsLabel);
+
+    if (detailedClubs.size() >= 3) {
+        // Create club entries with medals
+        QHBoxLayout *firstClubLayout = new QHBoxLayout();
+        goldMedal1 = createMedalLabel("gold", true);
+        firstClubLabel = new QLabel(detailedClubs[0].second.first, this);
+        firstClubLabel->setFont(clubFont);
+        firstClubLayout->addWidget(goldMedal1);
+        firstClubLayout->addWidget(firstClubLabel);
+        firstClubLayout->addStretch();
+
+        QHBoxLayout *secondClubLayout = new QHBoxLayout();
+        silverMedal1 = createMedalLabel("silver", true);
+        secondClubLabel = new QLabel(detailedClubs[1].second.first, this);
+        secondClubLabel->setFont(clubFont);
+        secondClubLayout->addWidget(silverMedal1);
+        secondClubLayout->addWidget(secondClubLabel);
+        secondClubLayout->addStretch();
+
+        QHBoxLayout *thirdClubLayout = new QHBoxLayout();
+        bronzeMedal1 = createMedalLabel("bronze", true);
+        thirdClubLabel = new QLabel(detailedClubs[2].second.first, this);
+        thirdClubLabel->setFont(clubFont);
+        thirdClubLayout->addWidget(bronzeMedal1);
+        thirdClubLayout->addWidget(thirdClubLabel);
+        thirdClubLayout->addStretch();
+
+        topClubsLayout->addLayout(firstClubLayout);
+        topClubsLayout->addLayout(secondClubLayout);
+        topClubsLayout->addLayout(thirdClubLayout);
+    } else {
+        // Handle case with fewer than 3 clubs
+        QLabel* placeholderLabel = new QLabel("Not enough clubs for ranking", this);
+        placeholderLabel->setAlignment(Qt::AlignCenter);
+        topClubsLayout->addWidget(placeholderLabel);
+    }
+
+    mainLayout->addWidget(topClubsFrame, 0, Qt::AlignHCenter);
+}
+
+void AdminHome::setupTopUsersSection()
+{
+    // TOP 3 Users section
+    topUsersFrame = createRoundedFrame();
+    topUsersFrame->setMinimumWidth(310);
+    QVBoxLayout *topUsersLayout = new QVBoxLayout(topUsersFrame);
+    topUsersLayout->setContentsMargins(15, 15, 15, 15);
+
+    thisWeekUsersLabel = new QLabel("This Week", this);
+    thisWeekUsersLabel->setFont(QFont("Arial", 10));
+
+    topUsersLabel = new QLabel("TOP 3 Users", this);
+    QFont topLabelFont;
+    topLabelFont.setBold(true);
+    topLabelFont.setPointSize(14);
+    topUsersLabel->setFont(topLabelFont);
+
+    // Define user font
+    QFont userFont;
+    userFont.setBold(true);
+    userFont.setPointSize(10);
+
+    // Get top members from database
+    auto detailedMembers = Database::getDetailedMemberRankings();
+
+    topUsersLayout->addWidget(thisWeekUsersLabel);
+    topUsersLayout->addWidget(topUsersLabel);
+
+    if (detailedMembers.size() >= 3) {
+        // Create user entries with medals
+        QHBoxLayout *firstUserLayout = new QHBoxLayout();
+        goldMedal2 = createMedalLabel("gold", true);
+        firstUserLabel = new QLabel(detailedMembers[0].second.first, this);
+        firstUserLabel->setFont(userFont);
+        firstUserLayout->addWidget(goldMedal2);
+        firstUserLayout->addWidget(firstUserLabel);
+        firstUserLayout->addStretch();
+
+        QHBoxLayout *secondUserLayout = new QHBoxLayout();
+        silverMedal2 = createMedalLabel("silver", true);
+        secondUserLabel = new QLabel(detailedMembers[1].second.first, this);
+        secondUserLabel->setFont(userFont);
+        secondUserLayout->addWidget(silverMedal2);
+        secondUserLayout->addWidget(secondUserLabel);
+        secondUserLayout->addStretch();
+
+        QHBoxLayout *thirdUserLayout = new QHBoxLayout();
+        bronzeMedal2 = createMedalLabel("bronze", true);
+        thirdUserLabel = new QLabel(detailedMembers[2].second.first, this);
+        thirdUserLabel->setFont(userFont);
+        thirdUserLayout->addWidget(bronzeMedal2);
+        thirdUserLayout->addWidget(thirdUserLabel);
+        thirdUserLayout->addStretch();
+
+        topUsersLayout->addLayout(firstUserLayout);
+        topUsersLayout->addLayout(secondUserLayout);
+        topUsersLayout->addLayout(thirdUserLayout);
+    } else {
+        // Handle case with fewer than 3 users
+        QLabel* placeholderLabel = new QLabel("Not enough users for ranking", this);
+        placeholderLabel->setAlignment(Qt::AlignCenter);
+        topUsersLayout->addWidget(placeholderLabel);
+    }
+
+    mainLayout->addWidget(topUsersFrame, 0, Qt::AlignHCenter);
+
+    // Add spacer to push navigation bar to bottom
+    mainLayout->addStretch();
+}
+
+void AdminHome::setupNavigation()
 {
     // Bottom navigation bar
     navigationFrame = new QFrame(this);
@@ -194,16 +276,19 @@ void AdminClub::setupNavigation()
     navigationFrame->setStyleSheet("QFrame { background-color: white; }");
 
     QHBoxLayout *navLayout = new QHBoxLayout(navigationFrame);
-    navLayout->setContentsMargins(15, 10, 15, 10);  // Match AdminMember navigation margins
-    navLayout->setSpacing(45);  // Match AdminMember navigation spacing
+    navLayout->setContentsMargins(15, 10, 15, 10);
+    navLayout->setSpacing(45);  // Increased spacing to fit the wider window
 
     // Create navigation icons
     homeButton = new QPushButton("", this);
     homeButton->setIcon(QIcon(":/images/resources/home_logo.png"));
     homeButton->setIconSize(QSize(20, 20));
-    homeButton->setStyleSheet("QPushButton { border: none; }");
+    // Highlight the home button since we're on the home page
+    homeButton->setStyleSheet("QPushButton { border: none; background-color: #D9E9D8; border-radius: 10px; padding: 5px; }");
 
+    // Initialize the profileButton
     profileButton = new QPushButton("", this);
+    profileButton->setObjectName("profileButton");
     profileButton->setIcon(QIcon(":/images/resources/member_logo.png"));
     profileButton->setIconSize(QSize(20, 20));
     profileButton->setStyleSheet("QPushButton { border: none; }");
@@ -211,7 +296,7 @@ void AdminClub::setupNavigation()
     groupsButton = new QPushButton("", this);
     groupsButton->setIcon(QIcon(":/images/resources/club_logo.png"));
     groupsButton->setIconSize(QSize(30, 30));
-    groupsButton->setStyleSheet("QPushButton { border: none; background-color: #D9E9D8; border-radius: 5px; padding: 5px; }");
+    groupsButton->setStyleSheet("QPushButton { border: none; }");
 
     navLayout->addWidget(homeButton);
     navLayout->addWidget(profileButton);
@@ -219,178 +304,66 @@ void AdminClub::setupNavigation()
 
     mainLayout->addWidget(navigationFrame);
 
+    // Set styles for frames - Light green background
+    QString frameStyle = "QFrame { background-color: #D9E9D8; border-radius: 12px; }";
+    clubsFrame->setStyleSheet(frameStyle);
+    usersFrame->setStyleSheet(frameStyle);
+    topClubsFrame->setStyleSheet(frameStyle);
+    topUsersFrame->setStyleSheet(frameStyle);
+
     // Connect navigation buttons
-    connect(homeButton, &QPushButton::clicked, this, &AdminClub::onHomeButtonClicked);
-    connect(profileButton, &QPushButton::clicked, this, &AdminClub::onProfileButtonClicked);
-    connect(groupsButton, &QPushButton::clicked, this, &AdminClub::onGroupsButtonClicked);
+    connect(homeButton, &QPushButton::clicked, this, &AdminHome::onHomeButtonClicked);
+    connect(profileButton, &QPushButton::clicked, this, &AdminHome::onProfileButtonClicked);
+    connect(groupsButton, &QPushButton::clicked, this, &AdminHome::onGroupsButtonClicked);
 }
 
-void AdminClub::onHomeButtonClicked()
+void AdminHome::onHomeButtonClicked()
 {
-    qDebug() << "Home button clicked in AdminClub";
-    emit navigateToHome();
-}
-
-void AdminClub::onProfileButtonClicked()
-{
-    qDebug() << "Profile button clicked in AdminClub";
-    emit navigateToMembers();
-}
-
-void AdminClub::onGroupsButtonClicked()
-{
-    qDebug() << "Groups button clicked in AdminClub - already on this page";
+    qDebug() << "Home button clicked in AdminHome - already on this page";
     // No navigation needed as we're already on this page
 }
 
-void AdminClub::onAddClubClicked()
+void AdminHome::onProfileButtonClicked()
 {
-    qDebug() << "Add club button clicked in AdminClub";
-
-    AddClubDialog dialog(this);
-    if (dialog.exec() == QDialog::Accepted) {
-        // Dialog was accepted, refresh club list
-        refreshClubList();
-    }
+    qDebug() << "Profile button clicked in AdminHome";
+    emit navigateToMembers();
 }
 
-void AdminClub::refreshClubList()
+void AdminHome::onGroupsButtonClicked()
 {
-    // Clear existing club cards
-    QLayoutItem *item;
-    while ((item = clubsLayout->takeAt(0)) != nullptr) {
-        if (item->widget()) {
-            delete item->widget();
-        }
-        delete item;
-    }
-
-    // Load all clubs from database
-    QVector<Club> clubs = Club::loadAllClubs();
-
-    // Add club cards
-    for (const Club& club : clubs) {
-        createClubCard(club);
-    }
-
-    // If no clubs, show a message
-    if (clubs.isEmpty()) {
-        QLabel *noClubsLabel = new QLabel("No clubs found. Click the + button to create one.", this);
-        noClubsLabel->setAlignment(Qt::AlignCenter);
-        clubsLayout->addWidget(noClubsLabel);
-    }
+    qDebug() << "Groups button clicked in AdminHome";
+    emit navigateToClubs();
 }
 
-void AdminClub::createClubCard(const Club& club)
+QLabel* AdminHome::createMedalLabel(const QString &color, bool withRibbon)
 {
-    QFrame *clubFrame = new QFrame(this);
-    clubFrame->setFrameShape(QFrame::NoFrame);
-    clubFrame->setContentsMargins(0, 0, 0, 0);
+    QLabel* medalLabel = new QLabel(this);
 
-    QHBoxLayout *cardLayout = new QHBoxLayout(clubFrame);
-    cardLayout->setContentsMargins(0, 4, 0, 4);  // Further reduced padding
+    // Use image files instead of drawing medals
+    QString imagePath;
+    if (color == "gold") {
+        imagePath = ":/images/resources/gold_medal.png";
+    } else if (color == "silver") {
+        imagePath = ":/images/resources/silver_medal.png";
+    } else if (color == "bronze") {
+        imagePath = ":/images/resources/bronze_medal.png";
+    }
 
-    // Club image - smaller size
-    QLabel *clubImage = new QLabel(this);
-    QPixmap clubPhotoPixmap;
-
-    if (!club.getPhoto().isEmpty()) {
-        clubPhotoPixmap.loadFromData(club.getPhoto());
+    QPixmap pixmap(imagePath);
+    if (!pixmap.isNull()) {
+        pixmap = pixmap.scaled(24, 24, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        medalLabel->setPixmap(pixmap);
     } else {
-        clubPhotoPixmap = QPixmap(":/images/resources/default_club.png");
+        // Fallback if image isn't found
+        medalLabel->setText(color);
     }
 
-    if (clubPhotoPixmap.isNull()) {
-        // Create a placeholder if image is not found
-        clubPhotoPixmap = QPixmap(60, 60);  // Smaller image
-        clubPhotoPixmap.fill(Qt::lightGray);
+    medalLabel->setFixedSize(24, 24);
 
-        // Draw placeholder image icon
-        QPainter painter(&clubPhotoPixmap);
-        painter.setPen(Qt::darkGray);
-        painter.drawRect(15, 15, 40, 30);
-        painter.drawLine(15, 20, 30, 40);
-        painter.drawEllipse(40, 20, 8, 8);
-    }
-
-    clubImage->setPixmap(clubPhotoPixmap.scaled(60, 60, Qt::KeepAspectRatio, Qt::SmoothTransformation));  // Smaller image
-    clubImage->setFixedSize(60, 60);  // Smaller image size
-    clubImage->setStyleSheet("background-color: #E0E0E0;");
-
-    // Club info with reduced spacing
-    QVBoxLayout *infoLayout = new QVBoxLayout();
-    infoLayout->setSpacing(1);  // Minimal spacing
-
-    // Club name with ID in smaller font
-    QString nameWithId = club.getName() + " (ID: " + QString::number(club.getId()) + ")";
-    QLabel *nameLabel = new QLabel(nameWithId, this);
-    nameLabel->setFont(QFont("Arial", 12, QFont::Bold));  // Smaller font
-
-    QLabel *membersLabel = new QLabel(QString::number(club.getMemberCount()) + " members", this);
-    membersLabel->setFont(QFont("Arial", 9));  // Smaller font
-
-    // Leader info with smaller font
-    QLabel *leaderLabel = new QLabel("Leader ID: " + QString::number(club.getLeaderId()), this);
-    leaderLabel->setFont(QFont("Arial", 9));  // Smaller font
-
-    infoLayout->addWidget(nameLabel);
-    infoLayout->addWidget(membersLabel);
-    infoLayout->addWidget(leaderLabel);
-
-    // Action buttons - smaller size
-    QVBoxLayout *actionsLayout = new QVBoxLayout();
-    actionsLayout->setSpacing(4);  // Reduced spacing
-
-    QPushButton *deleteButton = new QPushButton("", this);
-    deleteButton->setIcon(QIcon(":/images/resources/trash.png"));
-    deleteButton->setIconSize(QSize(16, 16));  // Smaller icon
-    deleteButton->setFixedSize(28, 28);  // Smaller button
-    deleteButton->setStyleSheet("QPushButton { background-color: #E0E0E0; border-radius: 8px; padding: 4px; }");
-
-    // Connect delete button
-    connect(deleteButton, &QPushButton::clicked, [this, clubId = club.getId(), clubName = club.getName()]() {
-        qDebug() << "Delete clicked for club ID:" << clubId;
-
-        // Ask for confirmation
-        QMessageBox::StandardButton reply = QMessageBox::question(this, "Confirm Delete",
-                                                                  QString("Are you sure you want to delete the club '%1'?").arg(clubName),
-                                                                  QMessageBox::Yes|QMessageBox::No);
-
-        if (reply == QMessageBox::Yes) {
-            // Delete club from database
-            QSqlQuery query;
-            query.prepare("DELETE FROM clubs_list WHERE club_id = :id");
-            query.prepare("DELETE FROM clubleaders_list WHERE assigned_club_id = :id");
-            query.bindValue(":id", clubId);
-
-            if (query.exec()) {
-                qDebug() << "Club deleted successfully";
-                refreshClubList();
-            } else {
-                qDebug() << "Error deleting club:" << query.lastError();
-                QMessageBox::critical(this, "Error", "Failed to delete club. Please try again.");
-            }
-        }
-    });
-
-    actionsLayout->addWidget(deleteButton);
-
-    cardLayout->addWidget(clubImage);
-    cardLayout->addLayout(infoLayout, 1);
-    cardLayout->addLayout(actionsLayout);
-
-    clubsLayout->addWidget(clubFrame);
-
-    // Add thinner separator line
-    QFrame *line = new QFrame(this);
-    line->setFrameShape(QFrame::HLine);
-    line->setFrameShadow(QFrame::Sunken);
-    line->setStyleSheet("background-color: #E0E0E0;");
-    line->setMaximumHeight(1);
-    clubsLayout->addWidget(line);
+    return medalLabel;
 }
 
-QFrame* AdminClub::createRoundedFrame()
+QFrame* AdminHome::createRoundedFrame()
 {
     QFrame* frame = new QFrame(this);
     frame->setFrameShape(QFrame::StyledPanel);
@@ -399,49 +372,4 @@ QFrame* AdminClub::createRoundedFrame()
     frame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
 
     return frame;
-}
-
-void AdminClub::setupSearchFunctionality()
-{
-    // Connect search edit to search slot
-    connect(searchEdit, &QLineEdit::textChanged, this, &AdminClub::searchClubs);
-}
-
-void AdminClub::searchClubs(const QString &searchText)
-{
-    // Skip filtering if search text is empty
-    if (searchText.isEmpty()) {
-        // Show all clubs
-        for (int i = 0; i < clubsLayout->count(); ++i) {
-            QLayoutItem* item = clubsLayout->itemAt(i);
-            if (item && item->widget()) {
-                item->widget()->setVisible(true);
-            }
-        }
-        return;
-    }
-
-    // Hide/show club cards based on search text
-    for (int i = 0; i < clubsLayout->count(); ++i) {
-        QLayoutItem* item = clubsLayout->itemAt(i);
-        if (item && item->widget()) {
-            QFrame* clubFrame = qobject_cast<QFrame*>(item->widget());
-            if (clubFrame) {
-                // Find name label in the frame (typically the first QLabel with bold font)
-                bool visible = false;
-                QList<QLabel*> labels = clubFrame->findChildren<QLabel*>();
-
-                for (QLabel* label : labels) {
-                    QFont font = label->font();
-                    if (font.bold() && font.pointSize() > 10) {  // Adjusted threshold for the smaller font
-                        QString clubName = label->text();
-                        visible = clubName.contains(searchText, Qt::CaseInsensitive);
-                        break;
-                    }
-                }
-
-                clubFrame->setVisible(visible);
-            }
-        }
-    }
 }
