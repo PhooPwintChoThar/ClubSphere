@@ -164,14 +164,16 @@ void MainWindow::initializeLeaderNotifications()
     }
 }
 
-void MainWindow::initializeLeaderboardPage()
+void MainWindow::initializeLeaderboardPage(int clubId)
 {
     if (!leaderboardPage) {
         qDebug() << "Initializing Leaderboard Page";
-        leaderboardPage = new LeaderboardAll();
+        leaderboardPage = new LeaderboardAll(clubId);
         // Connect signals
         connect(leaderboardPage, &LeaderboardAll::navigateBack, this, &MainWindow::showLeaderHomePage);
+
     }
+
 }
 
 // Initialize new member pages
@@ -221,7 +223,7 @@ void MainWindow::initializeMemberProfilePage()
 {
     if (!memberProfilePage) {
         qDebug() << "Initializing Member Profile Page";
-        memberProfilePage = new MProfilePage();
+        memberProfilePage = new MProfilePage(currentUserId);
         // Connect navigation signals
         connect(memberProfilePage, &MProfilePage::navigateToHome, this, &MainWindow::showMemberHomePage);
         connect(memberProfilePage, &MProfilePage::navigateToClub, this, &MainWindow::showMemberClubPage);
@@ -377,10 +379,10 @@ void MainWindow::showLeaderNotifications()
     cleanupUnusedPages(leaderNotifications);
 }
 
-void MainWindow::showLeaderboard()
+void MainWindow::showLeaderboard(int clubId)
 {
     qDebug() << "Showing Leaderboard";
-    initializeLeaderboardPage();
+    initializeLeaderboardPage(clubId);
     leaderboardPage->show();
     leaderboardPage->raise();
     leaderboardPage->activateWindow();
