@@ -8,7 +8,6 @@
 #include "adminHome.h"
 #include "adminMember.h"
 #include "adminClub.h"
-#include "adminNoti.h"
 #include "lhomepage.h"
 #include "lgroupchat.h"
 #include "lnoti.h"
@@ -20,7 +19,7 @@
 #include "mboardpage.h"
 #include "meventpage.h"
 #include "mchatpage.h"
-#include<searchclubs.h>
+#include "searchclubs.h"
 
 class MainWindow : public QMainWindow
 {

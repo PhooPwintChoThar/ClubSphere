@@ -53,6 +53,7 @@ private:
     void loadUserClubs();
     void clearContentLayout(QLayout* layout);
     void showAllClubs(QLayout* layout);
+    QPixmap createCircularPixmap(const QPixmap& pixmap, int size);
     void loadClubs(const QVector<int>& clubIds, bool isJoined);
     QWidget* createClubItem(int clubId, const QString& name, const QString& rank,
                                        const QString& members, bool isPending, bool isJoinedView);

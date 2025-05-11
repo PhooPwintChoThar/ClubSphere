@@ -438,12 +438,11 @@ void MProfilePage::loadClubRankings()
     }
 
     QFont regularFont;
-    regularFont.setPointSize(11);
-    QFont valueFont;
-    valueFont.setPointSize(11);
+    regularFont.setPointSize(12);
+    QFont rankFont;
+    rankFont.setPointSize(12);
+    rankFont.setBold(true);
 
-    // For now, we'll just display the joined club names
-    bool isFirst = true;
     for (int clubId : joinedClubs) {
         QSqlQuery clubQuery;
         clubQuery.prepare("SELECT club_name FROM clubs_list WHERE club_id = :clubId");
@@ -452,49 +451,49 @@ void MProfilePage::loadClubRankings()
         if (clubQuery.exec() && clubQuery.next()) {
             QString clubName = clubQuery.value(0).toString();
 
-            // Create a widget for this club ranking
-            QWidget* rankWidget = new QWidget();
-            rankWidget->setFixedHeight(50);
-            QHBoxLayout* rankLayout = new QHBoxLayout(rankWidget);
-            rankLayout->setContentsMargins(0, 0, 0, 0);
+            // Create a simple row widget
+            QWidget* rowWidget = new QWidget();
+            rowWidget->setFixedHeight(40); // Fixed height for consistent rows
 
+            QHBoxLayout* rowLayout = new QHBoxLayout(rowWidget);
+            rowLayout->setContentsMargins(15, 0, 15, 0); // Left and right padding
+            rowLayout->setSpacing(0); // No spacing between elements
+
+            // Club name label (left-aligned)
             QLabel* clubLabel = new QLabel(clubName);
             clubLabel->setFont(regularFont);
+            clubLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+            rowLayout->addWidget(clubLabel, 1); // Takes available space
 
-            int mRank = Database::calculateUserRankInClub(user_id,clubId);
-            QLabel* rankValue = new QLabel("Rank : "+QString::number(mRank)); // Placeholder ranking
-            rankValue->setFont(valueFont);
-            rankValue->setAlignment(Qt::AlignRight);
+            // Rank label (right-aligned)
+            int mRank = Database::calculateUserRankInClub(user_id, clubId);
+            QLabel* rankLabel = new QLabel("Rank: " + QString::number(mRank));
+            rankLabel->setFont(rankFont);
+            rankLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            rowLayout->addWidget(rankLabel);
 
-            rankLayout->addWidget(clubLabel);
-            rankLayout->addStretch(1);
-            rankLayout->addWidget(rankValue);
+            // Add subtle separator (optional)
+            QFrame* separator = new QFrame();
+            separator->setFrameShape(QFrame::HLine);
+            separator->setFrameShadow(QFrame::Sunken);
+            separator->setStyleSheet("color: #e0e0e0;");
+            separator->setFixedHeight(1);
 
             // Add to layout
-            rankingsLayout->addWidget(rankWidget);
-
-            // Add separator line (except for the last item)
-            if (!isFirst) {
-                QFrame* rankLine = new QFrame();
-                rankLine->setFrameShape(QFrame::HLine);
-                rankLine->setFrameShadow(QFrame::Sunken);
-                rankLine->setStyleSheet("background-color: #cccccc;");
-                rankLine->setFixedHeight(1);
-                rankingsLayout->addWidget(rankLine);
-            }
-            isFirst = false;
+            rankingsLayout->addWidget(rowWidget);
+            rankingsLayout->addWidget(separator);
         }
     }
 
-    // If no clubs are joined, display a message
+    // If no clubs are joined
     if (joinedClubs.isEmpty()) {
-        QLabel* noClubsLabel = new QLabel("You haven't joined any clubs yet.");
+        QLabel* noClubsLabel = new QLabel("No clubs joined");
         noClubsLabel->setAlignment(Qt::AlignCenter);
+        noClubsLabel->setStyleSheet("color: #999999;");
         rankingsLayout->addWidget(noClubsLabel);
     }
 
-    // Add stretch to keep widgets at the top
-    rankingsLayout->addStretch(1);
+    rankingsLayout->addStretch(1); // Push content to top
 }
 
 void MProfilePage::updateProfilePicture(const QPixmap &pixmap)

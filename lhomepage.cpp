@@ -128,7 +128,7 @@ EventCard::EventCard(const QString& clubName, const QDateTime& dateTime,
     // Profile image - Make it square instead of circle
     m_profileImage = new QLabel(this);
     m_profileImage->setFixedSize(40, 40);
-    m_profileImage->setStyleSheet("border: 1px solid lightgray; background-color: lightgray;"); // Square border
+    m_profileImage->setStyleSheet("border: 1px solid white; background-color: white;");
 
     // Load club photo from database based on club name
     QSqlQuery query;

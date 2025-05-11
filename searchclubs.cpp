@@ -14,15 +14,27 @@ ClubCard::ClubCard(int clubId, const QString& clubName, int memberCount, const Q
     : QFrame(parent), m_clubId(clubId), m_clubName(clubName), m_isPending(isPending), m_isJoined(isJoined)
 {
     setFrameShape(QFrame::NoFrame);
-    setContentsMargins(0, 0, 0, 0);
+    setContentsMargins(0, 0, 10, 0); // Right margin for scrollbar space
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     QHBoxLayout* cardLayout = new QHBoxLayout(this);
     cardLayout->setContentsMargins(0, 8, 0, 8);
+    cardLayout->setSpacing(10);
 
-    // Club image
-    m_clubImageLabel = new QLabel(this);
+    // Club image container
+    QWidget* imageContainer = new QWidget(this);
+    imageContainer->setFixedSize(70, 70);
+    imageContainer->setStyleSheet("background-color: white;");
+    QVBoxLayout* imageLayout = new QVBoxLayout(imageContainer);
+    imageLayout->setContentsMargins(0, 0, 0, 0);
+    imageLayout->setAlignment(Qt::AlignCenter);
+
+    m_clubImageLabel = new QLabel(imageContainer);
+    m_clubImageLabel->setFixedSize(60, 60);
+    m_clubImageLabel->setAlignment(Qt::AlignCenter);
+    m_clubImageLabel->setStyleSheet("background-color: transparent;");
+
     QPixmap clubPhotoPixmap;
-
     if (!photoData.isEmpty()) {
         clubPhotoPixmap.loadFromData(photoData);
     } else {
@@ -30,62 +42,73 @@ ClubCard::ClubCard(int clubId, const QString& clubName, int memberCount, const Q
     }
 
     if (clubPhotoPixmap.isNull()) {
-        // Create a placeholder if image is not found
-        clubPhotoPixmap = QPixmap(80, 80);
-        clubPhotoPixmap.fill(Qt::lightGray);
-
-        // Draw placeholder image icon
+        clubPhotoPixmap = QPixmap(60, 60);
+        clubPhotoPixmap.fill(Qt::white);
         QPainter painter(&clubPhotoPixmap);
         painter.setPen(Qt::darkGray);
-        painter.drawRect(20, 20, 50, 40);
-        painter.drawLine(20, 30, 40, 50);
-        painter.drawEllipse(50, 30, 10, 10);
+        painter.drawRect(10, 10, 40, 30);
+        painter.drawLine(10, 20, 25, 35);
+        painter.drawEllipse(35, 20, 8, 8);
     }
 
-    m_clubImageLabel->setPixmap(clubPhotoPixmap.scaled(80, 80, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    m_clubImageLabel->setFixedSize(80, 80);
-    m_clubImageLabel->setStyleSheet("background-color: #E0E0E0;");
+    QPixmap scaledPixmap = clubPhotoPixmap.scaled(60, 60, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    QPixmap finalPixmap(60, 60);
+    finalPixmap.fill(Qt::transparent);
+    QPainter painter(&finalPixmap);
+    painter.drawPixmap((60 - scaledPixmap.width()) / 2,
+                       (60 - scaledPixmap.height()) / 2,
+                       scaledPixmap);
+    m_clubImageLabel->setPixmap(finalPixmap);
+    imageLayout->addWidget(m_clubImageLabel);
+    cardLayout->addWidget(imageContainer, 0, Qt::AlignLeft);
 
-
-    // Club info
+    // Club info - left aligned
     QVBoxLayout* infoLayout = new QVBoxLayout();
-    infoLayout->setSpacing(3);
+    infoLayout->setContentsMargins(0, 0, 0, 0);
+    infoLayout->setSpacing(1);
+    infoLayout->setAlignment(Qt::AlignLeft);
 
-    // Display club name with ID
     QString nameWithId = clubName + " (ID: " + QString::number(clubId) + ")";
     m_clubNameLabel = new QLabel(nameWithId, this);
-    m_clubNameLabel->setFont(QFont("Arial", 15, QFont::Bold));
+    m_clubNameLabel->setFont(QFont("Arial", 13, QFont::Bold));
+    m_clubNameLabel->setWordWrap(true);
+    m_clubNameLabel->setAlignment(Qt::AlignLeft);
+    m_clubNameLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 
     m_memberCountLabel = new QLabel(QString::number(memberCount) + " members", this);
-    m_memberCountLabel->setFont(QFont("Arial", 11));
-    int clubRank = Database::calculateClubRanking(clubId);;
+    m_memberCountLabel->setFont(QFont("Arial", 10));
+    m_memberCountLabel->setAlignment(Qt::AlignLeft);
 
-
-    // Add ranking label
+    int clubRank = Database::calculateClubRanking(clubId);
     m_rankingLabel = new QLabel("Rank: #" + QString::number(clubRank), this);
-    m_rankingLabel->setFont(QFont("Arial", 13));
-
+    m_rankingLabel->setFont(QFont("Arial", 11));
+    m_rankingLabel->setAlignment(Qt::AlignLeft);
 
     m_leaderLabel = new QLabel("Leader: " + leaderName, this);
-    m_leaderLabel->setFont(QFont("Arial", 11));
+    m_leaderLabel->setFont(QFont("Arial", 10));
+    m_leaderLabel->setWordWrap(true);
+    m_leaderLabel->setAlignment(Qt::AlignLeft);
 
     infoLayout->addWidget(m_clubNameLabel);
     infoLayout->addWidget(m_memberCountLabel);
     infoLayout->addWidget(m_rankingLabel);
     infoLayout->addWidget(m_leaderLabel);
 
-    // Join button
-    m_joinButton = new QPushButton(this);
-    updateButtonState(m_isJoined, m_isPending);
+    // Add stretch to push button to the right
+    cardLayout->addLayout(infoLayout, 1);
 
+    // Join button - fixed width and right-aligned
+    m_joinButton = new QPushButton(this);
+    m_joinButton->setFixedSize(80, 30); // Fixed size for consistency
+    updateButtonState(m_isJoined, m_isPending);
     connect(m_joinButton, &QPushButton::clicked, this, &ClubCard::onJoinButtonClicked);
 
-    cardLayout->addWidget(m_clubImageLabel);
-    cardLayout->addLayout(infoLayout, 1);
-    cardLayout->addWidget(m_joinButton);
+    cardLayout->addWidget(m_joinButton, 0, Qt::AlignRight);
 
-    setFixedWidth(330);
+    // Fixed height for the card
+    setFixedHeight(100);
 }
+
 
 void ClubCard::updateButtonState(bool isJoined, bool isPending)
 {
@@ -98,7 +121,7 @@ void ClubCard::updateButtonState(bool isJoined, bool isPending)
         m_joinButton->setEnabled(false);
     } else if (isPending) {
         m_joinButton->setText("Pending");
-        m_joinButton->setStyleSheet("QPushButton { background-color: #D9E9D8; border-radius: 12px; padding: 6px 10px; color: #4CAF50; }");
+        m_joinButton->setStyleSheet("QPushButton { background-color: #D9E9D8; border-radius: 12px; padding: 6px 5px; color: #4CAF50; }");
         m_joinButton->setEnabled(true);
     } else {
         m_joinButton->setText("Join");
@@ -134,18 +157,15 @@ void SearchClubs::setupUI()
     // Set background color to white and fix window size
     setStyleSheet("background-color: white;");
     setFixedSize(350, 650);
-
     // Main layout
     m_mainLayout = new QVBoxLayout(this);
     m_mainLayout->setAlignment(Qt::AlignTop);
     m_mainLayout->setContentsMargins(20, 30, 20, 20);
     m_mainLayout->setSpacing(15);
-
     // Title
     QLabel* titleLabel = new QLabel("Clubsphere", this);
     titleLabel->setFont(QFont("Arial", 16, QFont::Bold));
     titleLabel->setAlignment(Qt::AlignCenter);
-    m_mainLayout->addWidget(titleLabel);
 
     // Back button
     QPushButton* backButton = new QPushButton(this);
@@ -154,57 +174,55 @@ void SearchClubs::setupUI()
     backButton->setFixedSize(40, 40);
     backButton->setStyleSheet("QPushButton { background-color: #F0F0F0; border-radius: 20px; }");
     connect(backButton, &QPushButton::clicked, this, &SearchClubs::navigateToHome);
-
     // Add back button to a separate layout above title
     QHBoxLayout* navLayout = new QHBoxLayout();
     navLayout->addWidget(backButton);
-    navLayout->addStretch();
+    navLayout->addStretch(1);
+    navLayout->addWidget(titleLabel);
+    navLayout->addStretch(1);
+    QWidget* spacer = new QWidget(this);
+    spacer->setFixedSize(40, 40);  // Same size as the back button
+    spacer->setStyleSheet("background-color: transparent;");
+    navLayout->addWidget(spacer);
     m_mainLayout->insertLayout(0, navLayout);
-
     // Search bar
     QFrame* searchFrame = new QFrame(this);
     searchFrame->setFrameShape(QFrame::StyledPanel);
     searchFrame->setStyleSheet("QFrame { background-color: #F0F0F0; border-radius: 12px; }");
-
     QHBoxLayout* searchLayout = new QHBoxLayout(searchFrame);
     searchLayout->setContentsMargins(15, 8, 15, 8);
-
     QLabel* searchIcon = new QLabel(this);
     searchIcon->setPixmap(QIcon(":/images/resources/search_logo.png").pixmap(20, 20));
-
     m_searchBar = new QLineEdit(this);
     m_searchBar->setPlaceholderText("Search");
     m_searchBar->setStyleSheet("QLineEdit { border: none; background-color: transparent; }");
-
     searchLayout->addWidget(searchIcon);
     searchLayout->addWidget(m_searchBar);
-
     m_mainLayout->addWidget(searchFrame);
-
     // Connect search bar
     connect(m_searchBar, &QLineEdit::textChanged, this, &SearchClubs::filterClubs);
-
     // Clubs header
     QHBoxLayout* clubsHeaderLayout = new QHBoxLayout();
     QLabel* clubsLabel = new QLabel("Available Clubs:", this);
     clubsLabel->setFont(QFont("Arial", 18, QFont::Bold));
     clubsHeaderLayout->addWidget(clubsLabel);
     m_mainLayout->addLayout(clubsHeaderLayout);
-
     // Scroll area for club list
     m_scrollArea = new QScrollArea(this);
     m_scrollArea->setWidgetResizable(true);
     m_scrollArea->setFrameShape(QFrame::NoFrame);
     m_scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    m_scrollArea->setMinimumHeight(400);
 
     m_scrollContent = new QWidget(m_scrollArea);
     m_clubsLayout = new QVBoxLayout(m_scrollContent);
     m_clubsLayout->setAlignment(Qt::AlignTop);
-    m_clubsLayout->setContentsMargins(0, 0, 0, 0);
-    m_clubsLayout->setSpacing(15);
+    m_clubsLayout->setContentsMargins(0, 0, 0, 0); // No margins - handled by cards
+    m_clubsLayout->setSpacing(10); // Reduced spacing between cards
 
     m_scrollArea->setWidget(m_scrollContent);
-    m_mainLayout->addWidget(m_scrollArea);
+    m_mainLayout->addWidget(m_scrollArea, 1);
 }
 
 void SearchClubs::loadClubsFromDatabase()

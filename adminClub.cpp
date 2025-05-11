@@ -315,7 +315,7 @@ void AdminClub::createClubCard(const Club& club)
 
     clubImage->setPixmap(clubPhotoPixmap.scaled(60, 60, Qt::KeepAspectRatio, Qt::SmoothTransformation));  // Smaller image
     clubImage->setFixedSize(60, 60);  // Smaller image size
-    clubImage->setStyleSheet("background-color: #E0E0E0;");
+    clubImage->setStyleSheet("background-color: white;");
 
     // Club info with reduced spacing
     QVBoxLayout *infoLayout = new QVBoxLayout();
@@ -348,30 +348,27 @@ void AdminClub::createClubCard(const Club& club)
     deleteButton->setStyleSheet("QPushButton { background-color: #E0E0E0; border-radius: 8px; padding: 4px; }");
 
     // Connect delete button
+    // Replace the current delete button connection in the createClubCard function with this:
+
     connect(deleteButton, &QPushButton::clicked, [this, clubId = club.getId(), clubName = club.getName()]() {
         qDebug() << "Delete clicked for club ID:" << clubId;
 
         // Ask for confirmation
         QMessageBox::StandardButton reply = QMessageBox::question(this, "Confirm Delete",
-                                                                  QString("Are you sure you want to delete the club '%1'?").arg(clubName),
+                                                                  QString("Are you sure you want to delete the club '%1'?\nThis will remove the club from all members' lists.").arg(clubName),
                                                                   QMessageBox::Yes|QMessageBox::No);
 
         if (reply == QMessageBox::Yes) {
-            // Delete club from database
-            QSqlQuery query;
-            query.prepare("DELETE FROM clubs_list WHERE club_id = :id");
-            query.prepare("DELETE FROM clubleaders_list WHERE assigned_club_id = :id");
-            query.bindValue(":id", clubId);
+            // Call the deleteClub function
+            deleteClub(clubId);
 
-            if (query.exec()) {
-                qDebug() << "Club deleted successfully";
-                refreshClubList();
-            } else {
-                qDebug() << "Error deleting club:" << query.lastError();
-                QMessageBox::critical(this, "Error", "Failed to delete club. Please try again.");
-            }
+            // Refresh the club list after deletion
+            refreshClubList();
+
+            QMessageBox::information(this, "Success", QString("Club '%1' has been deleted successfully.").arg(clubName));
         }
     });
+
 
     actionsLayout->addWidget(deleteButton);
 
@@ -390,6 +387,111 @@ void AdminClub::createClubCard(const Club& club)
     clubsLayout->addWidget(line);
 }
 
+
+
+// Implementation in adminClub.cpp
+void AdminClub::deleteClub(int clubId)
+{
+    QSqlQuery query;
+
+    // 1. Get the club members list before deleting the club
+    QVector<int> clubMemberIds;
+    query.prepare("SELECT club_members FROM clubs_list WHERE club_id = :clubId");
+    query.bindValue(":clubId", clubId);
+
+    if (query.exec() && query.next()) {
+        QString clubMembers = query.value(0).toString();
+        clubMemberIds = Database::deserializeUserIds(clubMembers);
+    }
+
+    // 2. Remove this club from each member's joined_clubs list
+    for (int userId : clubMemberIds) {
+        query.prepare("SELECT joined_clubs, going_events FROM users_list WHERE user_id = :userId");
+        query.bindValue(":userId", userId);
+
+        if (query.exec() && query.next()) {
+            // Get current joined clubs and going events
+            QString joinedClubs = query.value(0).toString();
+            QString goingEvents = query.value(1).toString();
+
+            // Remove the club from joined clubs
+            QVector<int> joinedClubsVector = Database::deserializeUserIds(joinedClubs);
+            joinedClubsVector.removeAll(clubId);
+            QString updatedJoinedClubs = Database::serializeUserIds(joinedClubsVector);
+
+            // Get club's events
+            QSqlQuery eventsQuery;
+            eventsQuery.prepare("SELECT event_ids FROM clubs_list WHERE club_id = :clubId");
+            eventsQuery.bindValue(":clubId", clubId);
+
+            QVector<int> updatedGoingEvents;
+            QVector<int> goingEventsVector = Database::deserializeUserIds(goingEvents);
+
+            if (eventsQuery.exec() && eventsQuery.next()) {
+                QString clubEvents = eventsQuery.value(0).toString();
+                QVector<int> clubEventsVector = Database::deserializeUserIds(clubEvents);
+
+                // For each event the user is going to
+                for (int eventId : goingEventsVector) {
+                    // Check if this event belongs to the club the user is leaving
+                    QSqlQuery checkQuery;
+                    checkQuery.prepare("SELECT 1 FROM events_list WHERE event_id = :eventId AND club_id = :clubId");
+                    checkQuery.bindValue(":eventId", eventId);
+                    checkQuery.bindValue(":clubId", clubId);
+
+                    if (checkQuery.exec() && checkQuery.next()) {
+                        // This event belongs to the club, remove it from going events
+                        // and decrement the count
+                        QSqlQuery updateEventQuery;
+                        updateEventQuery.prepare("UPDATE events_list SET event_going_count = event_going_count - 1 WHERE event_id = :eventId");
+                        updateEventQuery.bindValue(":eventId", eventId);
+                        updateEventQuery.exec();
+                    } else {
+                        // This event doesn't belong to the club, keep it
+                        updatedGoingEvents.append(eventId);
+                    }
+                }
+            } else {
+                // If no events found, keep all original events
+                updatedGoingEvents = goingEventsVector;
+            }
+
+            // Update user record
+            QSqlQuery updateQuery;
+            updateQuery.prepare("UPDATE users_list SET joined_clubs = :joinedClubs, going_events = :goingEvents WHERE user_id = :userId");
+            updateQuery.bindValue(":joinedClubs", updatedJoinedClubs);
+            updateQuery.bindValue(":goingEvents", Database::serializeUserIds(updatedGoingEvents));
+            updateQuery.bindValue(":userId", userId);
+            updateQuery.exec();
+        }
+    }
+
+    // 3. Remove leader from clubleaders_list
+    query.prepare("DELETE FROM clubleaders_list WHERE assigned_club_id = :clubId");
+    query.bindValue(":clubId", clubId);
+    query.exec();
+
+    // 4. Remove notifications related to this club
+    query.prepare("DELETE FROM notification_lists WHERE club_id = :clubId");
+    query.bindValue(":clubId", clubId);
+    query.exec();
+
+    // 5. Delete all events belonging to this club
+    query.prepare("DELETE FROM events_list WHERE club_id = :clubId");
+    query.bindValue(":clubId", clubId);
+    query.exec();
+
+    // 6. Delete all messages belonging to this club
+    query.prepare("DELETE FROM messages_list WHERE club_id = :clubId");
+    query.bindValue(":clubId", clubId);
+    query.exec();
+
+
+    // 7. Finally delete the club itself
+    query.prepare("DELETE FROM clubs_list WHERE club_id = :clubId");
+    query.bindValue(":clubId", clubId);
+    query.exec();
+}
 QFrame* AdminClub::createRoundedFrame()
 {
     QFrame* frame = new QFrame(this);

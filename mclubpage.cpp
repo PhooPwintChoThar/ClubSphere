@@ -14,6 +14,7 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QPixmap>
+#include<QMessageBox>
 
 MClubPage::MClubPage(int userId, QWidget *parent) : QWidget(parent), m_userId(userId)
 {
@@ -267,41 +268,28 @@ void MClubPage::setupUI()
     eventIcon->setFixedSize(40, 40);
     eventIcon->setStyleSheet("QPushButton { background-color: transparent; border: none; }");
 
-    // In MHomepage::setupUI() method, replace the profile icon creation with:
 
     // Profile icon with user photo
     QPushButton* profileIcon = new QPushButton();
     QSqlQuery profileQuery;
     profileQuery.prepare("SELECT profile_photo FROM users_list WHERE user_id = :userId");
     profileQuery.bindValue(":userId", m_userId);
-
     if (profileQuery.exec() && profileQuery.next() && !profileQuery.value(0).isNull()) {
         QByteArray photoData = profileQuery.value(0).toByteArray();
         QPixmap userPhoto;
         if (userPhoto.loadFromData(photoData)) {
-            // Create circular profile photo
-            QPixmap circularPhoto = QPixmap(40, 40);
-            circularPhoto.fill(Qt::transparent);
-
-            QPainter painter(&circularPhoto);
-            painter.setRenderHint(QPainter::Antialiasing);
-            painter.setBrush(QBrush(userPhoto.scaled(40, 40, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)));
-            painter.setPen(Qt::NoPen);
-            painter.drawEllipse(0, 0, 40, 40);
-
-            profileIcon->setIcon(QIcon(circularPhoto));
+            // Create circular profile photo using the same approach as in MProfilePage
+            QPixmap roundedPixmap = createCircularPixmap(userPhoto, 24);
+            profileIcon->setIcon(QIcon(roundedPixmap));
             profileIcon->setIconSize(QSize(40, 40));
         } else {
-            // Fallback to default icon if image can't be loaded
             profileIcon->setIcon(QIcon(":/images/resources/user.png"));
-            profileIcon->setIconSize(QSize(24, 24));
+            profileIcon->setIconSize(QSize(40, 40)); // Match the size in MProfilePage
         }
     } else {
-        // Use default icon if no profile photo
         profileIcon->setIcon(QIcon(":/images/resources/user.png"));
-        profileIcon->setIconSize(QSize(24, 24));
+        profileIcon->setIconSize(QSize(40, 40)); // Match the size in MProfilePage
     }
-
     profileIcon->setFixedSize(40, 40);
     profileIcon->setStyleSheet("QPushButton { background-color: transparent; border: none; }");
 
@@ -364,6 +352,22 @@ void MClubPage::loadUserClubs()
 
     // Load and display pending clubs
     loadClubs(pendingClubIds, false);
+}
+
+QPixmap MClubPage::createCircularPixmap(const QPixmap& pixmap, int size)
+{
+    QPixmap scaledPixmap = pixmap.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+    QPixmap roundedPixmap(size, size);
+    roundedPixmap.fill(Qt::transparent);
+
+    QPainter painter(&roundedPixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(QBrush(scaledPixmap));
+    painter.drawEllipse(0, 0, size, size);
+
+    return roundedPixmap;
 }
 
 void MClubPage::loadClubs(const QVector<int>& clubIds, bool isJoined)
@@ -479,7 +483,7 @@ QWidget* MClubPage::createClubItem(int clubId, const QString& name, const QStrin
                                    const QString& members, bool isPending, bool isJoinedView)
 {
     QWidget* itemWidget = new QWidget();
-    itemWidget->setProperty("club_id", clubId); // Store clubId as a property
+    itemWidget->setProperty("club_id", clubId);
 
     QVBoxLayout* itemLayout = new QVBoxLayout(itemWidget);
     itemLayout->setContentsMargins(20, 20, 20, 20);
@@ -491,34 +495,76 @@ QWidget* MClubPage::createClubItem(int clubId, const QString& name, const QStrin
     topRowLayout->setContentsMargins(0, 0, 0, 0);
     topRowLayout->setSpacing(10);
 
-    // Club logo
+    // Club logo container (to maintain square shape)
+    QWidget* logoContainer = new QWidget();
+    logoContainer->setFixedSize(60, 60);
+    logoContainer->setStyleSheet("background-color: transparent;");
+
+    QVBoxLayout* logoLayout = new QVBoxLayout(logoContainer);
+    logoLayout->setContentsMargins(0, 0, 0, 0);
+    logoLayout->setAlignment(Qt::AlignCenter);
+
+    // Club logo label
     QLabel* logoLabel = new QLabel();
     logoLabel->setFixedSize(60, 60);
-    logoLabel->setStyleSheet("background-color: #1f3864; border-radius: 5px;");
+    logoLabel->setAlignment(Qt::AlignCenter);
+    logoLabel->setStyleSheet("background-color: transparent;");
 
-    // Try to load the image, if failed, create a placeholder
-    QPixmap logoPixmap(":/images/resources/club_icon.png");
-    if (logoPixmap.isNull()) {
-        QPixmap placeholder(60, 60);
-        placeholder.fill(Qt::transparent);
-        QPainter painter(&placeholder);
-        painter.setRenderHint(QPainter::Antialiasing);
-        painter.setBrush(QBrush(QColor("#1f3864")));
-        painter.setPen(Qt::NoPen);
-        painter.drawRect(0, 0, 60, 60);
-        painter.setBrush(QBrush(Qt::white));
-        painter.setPen(QPen(Qt::white, 2));
-        painter.drawEllipse(30, 30, 20, 20);
-        painter.drawLine(20, 20, 40, 40);
-        painter.drawLine(20, 40, 40, 20);
-        logoLabel->setPixmap(placeholder);
+    // Load club photo from database
+    QSqlQuery photoQuery;
+    photoQuery.prepare("SELECT club_photo FROM clubs_list WHERE club_id = :clubId");
+    photoQuery.bindValue(":clubId", clubId);
+
+    QPixmap logoPixmap;
+    if (photoQuery.exec() && photoQuery.next() && !photoQuery.value(0).isNull()) {
+        QByteArray photoData = photoQuery.value(0).toByteArray();
+        logoPixmap.loadFromData(photoData);
     } else {
-        logoLabel->setPixmap(logoPixmap.scaled(60, 60, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        // Use default club icon if no photo available
+        logoPixmap = QPixmap(":/images/resources/club_icon.png");
     }
 
-    topRowLayout->addWidget(logoLabel);
+    // Create circular/square photo
+    if (logoPixmap.isNull()) {
+        // Create a placeholder if image loading failed
+        logoPixmap = QPixmap(60, 60);
+        logoPixmap.fill(QColor("#1f3864"));
+        QPainter painter(&logoPixmap);
+        painter.setRenderHint(QPainter::Antialiasing);
+        painter.setPen(QPen(Qt::white, 2));
+        painter.drawEllipse(15, 15, 30, 30);
+        painter.drawLine(30, 20, 30, 40);
+        painter.drawLine(20, 30, 40, 30);
+    } else {
+        // Scale and center the image while maintaining aspect ratio
+        QPixmap scaledPixmap = logoPixmap.scaled(60, 60, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
-    // Club info
+        // Create a new pixmap with transparent background
+        QPixmap finalPixmap(60, 60);
+        finalPixmap.fill(Qt::transparent);
+
+        // Center the scaled image on the new pixmap
+        QPainter painter(&finalPixmap);
+        painter.drawPixmap((60 - scaledPixmap.width()) / 2,
+                           (60 - scaledPixmap.height()) / 2,
+                           scaledPixmap);
+        logoPixmap = finalPixmap;
+    }
+
+    // Apply the pixmap with rounded corners
+    QPixmap roundedPixmap(60, 60);
+    roundedPixmap.fill(Qt::transparent);
+    QPainter painter(&roundedPixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setBrush(QBrush(logoPixmap));
+    painter.setPen(Qt::NoPen);
+    painter.drawRoundedRect(0, 0, 60, 60, 10, 10); // Adjust corner radius as needed
+
+    logoLabel->setPixmap(roundedPixmap);
+    logoLayout->addWidget(logoLabel);
+    topRowLayout->addWidget(logoContainer);
+
+    // Rest of the club info remains the same
     QWidget* infoWidget = new QWidget();
     QVBoxLayout* infoLayout = new QVBoxLayout(infoWidget);
     infoLayout->setContentsMargins(0, 0, 0, 0);
@@ -530,13 +576,11 @@ QWidget* MClubPage::createClubItem(int clubId, const QString& name, const QStrin
     nameFont.setBold(true);
     nameLabel->setFont(nameFont);
 
-    QLabel* rankLabel = new QLabel("Rank: " + rank);
-    // Inside the function that displays club cards, add this code to fetch and show the rank
+    // Get actual club rank from database
     int clubRank = Database::calculateClubRanking(clubId);
-    if (clubRank > 0) {
-        rankLabel = new QLabel(QString("Rank: #%1").arg(clubRank));
-        rankLabel->setStyleSheet("font-weight: bold;");
-    }
+    QLabel* rankLabel = new QLabel(QString("Rank: #%1").arg(clubRank));
+    rankLabel->setStyleSheet("font-weight: bold;");
+
     QLabel* membersLabel = new QLabel("Members: " + members);
 
     infoLayout->addWidget(nameLabel);
@@ -546,6 +590,7 @@ QWidget* MClubPage::createClubItem(int clubId, const QString& name, const QStrin
 
     topRowLayout->addWidget(infoWidget, 1);
 
+    // Rest of the function remains the same...
     if (!isJoinedView) {
         // Status button for Pending view
         QPushButton* statusButton = new QPushButton("Pending");
@@ -567,7 +612,6 @@ QWidget* MClubPage::createClubItem(int clubId, const QString& name, const QStrin
                 "}"
             );
 
-        // Connect the cancel button to remove the club request
         if (isPending) {
             connect(statusButton, &QPushButton::clicked, [this, clubId]() {
                 cancelClubRequest(clubId);
@@ -582,7 +626,7 @@ QWidget* MClubPage::createClubItem(int clubId, const QString& name, const QStrin
         actionLayout->setContentsMargins(0, 0, 0, 0);
         actionLayout->setSpacing(5);
 
-        // Calendar button with PNG from resources
+        // Calendar button
         QPushButton* calendarButton = new QPushButton();
         calendarButton->setFixedSize(30, 30);
         calendarButton->setStyleSheet(
@@ -594,7 +638,6 @@ QWidget* MClubPage::createClubItem(int clubId, const QString& name, const QStrin
 
         QIcon calendarIcon(":/images/resources/event.png");
         if (calendarIcon.isNull()) {
-            // Fallback to drawing if resource is not available
             QPixmap calendarPixmap(30, 30);
             calendarPixmap.fill(Qt::transparent);
             QPainter calendarPainter(&calendarPixmap);
@@ -610,12 +653,11 @@ QWidget* MClubPage::createClubItem(int clubId, const QString& name, const QStrin
         }
         calendarButton->setIconSize(QSize(24, 24));
 
-        // Connect with clubId parameter
         connect(calendarButton, &QPushButton::clicked, [this, clubId]() {
             emit navigateToEvent(clubId);
         });
 
-        // Chat button with PNG from resources
+        // Chat button
         QPushButton* chatButton = new QPushButton();
         chatButton->setFixedSize(30, 30);
         chatButton->setStyleSheet(
@@ -627,7 +669,6 @@ QWidget* MClubPage::createClubItem(int clubId, const QString& name, const QStrin
 
         QIcon chatIcon(":/images/resources/chat.png");
         if (chatIcon.isNull()) {
-            // Fallback to drawing if resource is not available
             QPixmap chatPixmap(30, 30);
             chatPixmap.fill(Qt::transparent);
             QPainter chatPainter(&chatPixmap);
@@ -643,12 +684,11 @@ QWidget* MClubPage::createClubItem(int clubId, const QString& name, const QStrin
         }
         chatButton->setIconSize(QSize(24, 24));
 
-        // Connect with clubId parameter
         connect(chatButton, &QPushButton::clicked, [this, clubId]() {
             emit navigateToChat(clubId);
         });
 
-        // Leave button with PNG from resources
+        // Leave button
         QPushButton* leaveButton = new QPushButton();
         leaveButton->setFixedSize(30, 30);
         leaveButton->setStyleSheet(
@@ -660,7 +700,6 @@ QWidget* MClubPage::createClubItem(int clubId, const QString& name, const QStrin
 
         QIcon leaveIcon(":/images/resources/close.png");
         if (leaveIcon.isNull()) {
-            // Fallback to drawing if resource is not available
             QPixmap leavePixmap(30, 30);
             leavePixmap.fill(Qt::transparent);
             QPainter leavePainter(&leavePixmap);
@@ -674,7 +713,6 @@ QWidget* MClubPage::createClubItem(int clubId, const QString& name, const QStrin
         }
         leaveButton->setIconSize(QSize(24, 24));
 
-        // Connect the leave button to leave the club
         connect(leaveButton, &QPushButton::clicked, [this, clubId]() {
             leaveClub(clubId);
         });
@@ -686,9 +724,7 @@ QWidget* MClubPage::createClubItem(int clubId, const QString& name, const QStrin
         topRowLayout->addWidget(actionWidget);
     }
 
-    // Add top row to main layout
     itemLayout->addWidget(topRowWidget);
-
     return itemWidget;
 }
 

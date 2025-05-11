@@ -13,7 +13,8 @@
 #include <QVector>
 #include <QRandomGenerator>
 #include<QDateTime>
-#include "Mainwindow.h"
+#include <QStandardPaths>
+#include<QDir>
 
 
 class Database {
@@ -21,19 +22,25 @@ public:
 
     // Initialize database and create tables
     static bool initialize() {
-        // Remove any existing connections
+
         QSqlDatabase::removeDatabase(QSqlDatabase::defaultConnection);
+
+        // Define database path in a standard location
+        QString dbPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/club_sphere.db";
+
+        // Ensure the directory exists
+        QDir().mkpath(QFileInfo(dbPath).absolutePath());
 
         // Create a new database connection
         QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-        db.setDatabaseName("club_sphere.db");
+        db.setDatabaseName(dbPath);
+
+        qDebug() << "Database path:" << db.databaseName();
 
         if (!db.open()) {
             qDebug() << "Error: connection with database failed";
             return false;
         }
-
-
         QSqlQuery query;
 
         if (!query.exec("CREATE TABLE IF NOT EXISTS users_list("
@@ -50,21 +57,6 @@ public:
             return false;
         }
 
-        query.prepare("SELECT COUNT(*) FROM users_list WHERE user_id = 67001922");
-        if (query.exec() && query.next() && query.value(0).toInt() == 0) {
-            // User doesn't exist, create default user
-            QByteArray defaultProfilePhoto = loadDefaultProfilePhoto();
-
-            query.prepare("INSERT INTO users_list (user_id, password, points, profile_photo, name) "
-                          "VALUES (67001922, 111111, 0, :profile_photo, 'Admin')");
-            query.bindValue(":profile_photo", defaultProfilePhoto);
-
-            if (!query.exec()) {
-                qDebug() << "Error creating default user:" << query.lastError();
-                return false;
-            }
-            qDebug() << "Created default user with ID 67001922";
-        }
 
         if (!query.exec("CREATE TABLE IF NOT EXISTS clubs_list ("
                         "club_id INTEGER PRIMARY KEY, "

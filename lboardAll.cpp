@@ -48,7 +48,7 @@ void LeaderboardAll::setupUI()
     // Page title
     m_titleLabel = new QLabel("LeaderBoard");
     QFont titleFont;
-    titleFont.setPointSize(18);
+    titleFont.setPointSize(15);
     titleFont.setBold(true);
     m_titleLabel->setFont(titleFont);
     m_titleLabel->setAlignment(Qt::AlignCenter);
@@ -80,7 +80,7 @@ void LeaderboardAll::setupUI()
     // Club Members tab
     m_clubMembersTab = new QRadioButton("Club Members");
     m_clubMembersTab->setStyleSheet(
-        "QRadioButton { background-color: white; border-radius: 20px; padding: 8px 15px; font-weight: bold; font-size: 14px; }"
+        "QRadioButton { background-color: white; border-radius: 20px; padding: 8px 15px; font-weight: bold; font-size: 9px; }"
         "QRadioButton:checked { background-color: #eaf5dd; }"
         "QRadioButton::indicator { width: 0; height: 0; }"
         );
@@ -90,7 +90,7 @@ void LeaderboardAll::setupUI()
     // Members tab
     m_membersTab = new QRadioButton("All Members");
     m_membersTab->setStyleSheet(
-        "QRadioButton { background-color: white; border-radius: 20px; padding: 8px 15px; font-weight: bold; font-size: 14px; }"
+        "QRadioButton { background-color: white; border-radius: 20px; padding: 8px 15px; font-weight: bold; font-size: 9px; }"
         "QRadioButton:checked { background-color: #eaf5dd; }"
         "QRadioButton::indicator { width: 0; height: 0; }"
         );
@@ -99,7 +99,7 @@ void LeaderboardAll::setupUI()
     // Clubs tab
     m_clubsTab = new QRadioButton("All Clubs");
     m_clubsTab->setStyleSheet(
-        "QRadioButton { background-color: white; border-radius: 20px; padding: 8px 15px; font-weight: bold; font-size: 14px; }"
+        "QRadioButton { background-color: white; border-radius: 20px; padding: 8px 15px; font-weight: bold; font-size: 9px; }"
         "QRadioButton:checked { background-color: #eaf5dd; }"
         "QRadioButton::indicator { width: 0; height: 0; }"
         );
@@ -334,6 +334,18 @@ void LeaderboardAll::setupListItems()
                 QByteArray photoData = query.value(0).toByteArray();
                 if (!photoData.isEmpty()) {
                     if (userPixmap.loadFromData(photoData)) {
+                        // Create circular profile photo
+                        QPixmap circularPhoto(40, 40);
+                        circularPhoto.fill(Qt::transparent);
+
+                        QPainter painter(&circularPhoto);
+                        painter.setRenderHint(QPainter::Antialiasing);
+                        painter.setBrush(QBrush(userPixmap.scaled(40, 40, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)));
+                        painter.setPen(Qt::NoPen);
+                        painter.drawEllipse(0, 0, 40, 40);
+                        painter.end();
+
+                        userPixmap = circularPhoto;
                         imageLoaded = true;
                     }
                 }
@@ -341,11 +353,19 @@ void LeaderboardAll::setupListItems()
 
             // Fallback to default user image if needed
             if (!imageLoaded) {
-                userPixmap.load(":/images/resources/user.png");
-                if (userPixmap.isNull()) {
+                userPixmap = QPixmap(40, 40);
+                userPixmap.fill(Qt::transparent);
+
+                QPixmap defaultUser(":/images/resources/user.png");
+                if (!defaultUser.isNull()) {
+                    QPainter painter(&userPixmap);
+                    painter.setRenderHint(QPainter::Antialiasing);
+                    painter.setBrush(QBrush(defaultUser.scaled(40, 40, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)));
+                    painter.setPen(Qt::NoPen);
+                    painter.drawEllipse(0, 0, 40, 40);
+                    painter.end();
+                } else {
                     // Create a default user icon
-                    userPixmap = QPixmap(40, 40);
-                    userPixmap.fill(Qt::white);
                     QPainter painter(&userPixmap);
                     painter.setPen(QPen(Qt::gray, 2));
                     painter.setBrush(Qt::lightGray);
@@ -356,8 +376,8 @@ void LeaderboardAll::setupListItems()
                 }
             }
 
-            profilePic->setPixmap(userPixmap.scaled(40, 40, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-            profilePic->setStyleSheet("border-radius: 20px; background-color: white;");
+            profilePic->setPixmap(userPixmap);
+            profilePic->setStyleSheet("border-radius: 20px; background-color: transparent;");
             rowLayout->addWidget(profilePic);
 
             // Name with ID
@@ -423,6 +443,18 @@ void LeaderboardAll::setupListItems()
                 QByteArray photoData = query.value(0).toByteArray();
                 if (!photoData.isEmpty()) {
                     if (userPixmap.loadFromData(photoData)) {
+                        // Create circular profile photo
+                        QPixmap circularPhoto(40, 40);
+                        circularPhoto.fill(Qt::transparent);
+
+                        QPainter painter(&circularPhoto);
+                        painter.setRenderHint(QPainter::Antialiasing);
+                        painter.setBrush(QBrush(userPixmap.scaled(40, 40, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)));
+                        painter.setPen(Qt::NoPen);
+                        painter.drawEllipse(0, 0, 40, 40);
+                        painter.end();
+
+                        userPixmap = circularPhoto;
                         imageLoaded = true;
                     }
                 }
@@ -430,11 +462,19 @@ void LeaderboardAll::setupListItems()
 
             // Fallback to default user image if needed
             if (!imageLoaded) {
-                userPixmap.load(":/images/resources/user.png");
-                if (userPixmap.isNull()) {
+                userPixmap = QPixmap(40, 40);
+                userPixmap.fill(Qt::transparent);
+
+                QPixmap defaultUser(":/images/resources/user.png");
+                if (!defaultUser.isNull()) {
+                    QPainter painter(&userPixmap);
+                    painter.setRenderHint(QPainter::Antialiasing);
+                    painter.setBrush(QBrush(defaultUser.scaled(40, 40, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)));
+                    painter.setPen(Qt::NoPen);
+                    painter.drawEllipse(0, 0, 40, 40);
+                    painter.end();
+                } else {
                     // Create a default user icon
-                    userPixmap = QPixmap(40, 40);
-                    userPixmap.fill(Qt::white);
                     QPainter painter(&userPixmap);
                     painter.setPen(QPen(Qt::gray, 2));
                     painter.setBrush(Qt::lightGray);
@@ -445,8 +485,8 @@ void LeaderboardAll::setupListItems()
                 }
             }
 
-            profilePic->setPixmap(userPixmap.scaled(40, 40, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-            profilePic->setStyleSheet("border-radius: 20px; background-color: white;");
+            profilePic->setPixmap(userPixmap);
+            profilePic->setStyleSheet("border-radius: 20px; background-color: transparent;");
             rowLayout->addWidget(profilePic);
 
             // Name with ID
@@ -512,6 +552,18 @@ void LeaderboardAll::setupListItems()
                 QByteArray photoData = query.value(0).toByteArray();
                 if (!photoData.isEmpty()) {
                     if (clubPixmap.loadFromData(photoData)) {
+                        // Create circular club photo
+                        QPixmap circularPhoto(40, 40);
+                        circularPhoto.fill(Qt::transparent);
+
+                        QPainter painter(&circularPhoto);
+                        painter.setRenderHint(QPainter::Antialiasing);
+                        painter.setBrush(QBrush(clubPixmap.scaled(40, 40, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)));
+                        painter.setPen(Qt::NoPen);
+                        painter.drawEllipse(0, 0, 40, 40);
+                        painter.end();
+
+                        clubPixmap = circularPhoto;
                         imageLoaded = true;
                     }
                 }
@@ -519,11 +571,19 @@ void LeaderboardAll::setupListItems()
 
             // Fallback to default club image if needed
             if (!imageLoaded) {
-                clubPixmap.load(":/images/resources/club.png");
-                if (clubPixmap.isNull()) {
+                clubPixmap = QPixmap(40, 40);
+                clubPixmap.fill(Qt::transparent);
+
+                QPixmap defaultClub(":/images/resources/club.png");
+                if (!defaultClub.isNull()) {
+                    QPainter painter(&clubPixmap);
+                    painter.setRenderHint(QPainter::Antialiasing);
+                    painter.setBrush(QBrush(defaultClub.scaled(40, 40, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)));
+                    painter.setPen(Qt::NoPen);
+                    painter.drawEllipse(0, 0, 40, 40);
+                    painter.end();
+                } else {
                     // Create a default club icon
-                    clubPixmap = QPixmap(40, 40);
-                    clubPixmap.fill(Qt::white);
                     QPainter painter(&clubPixmap);
                     painter.setPen(QPen(Qt::gray, 2));
                     painter.setBrush(Qt::lightGray);
@@ -535,7 +595,8 @@ void LeaderboardAll::setupListItems()
                 }
             }
 
-            clubPic->setPixmap(clubPixmap.scaled(40, 40, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+            clubPic->setPixmap(clubPixmap);
+            clubPic->setStyleSheet("border-radius: 20px; background-color: transparent;");
             rowLayout->addWidget(clubPic);
 
             // Name with ID
@@ -569,16 +630,15 @@ QWidget* LeaderboardAll::createLeaderItem(const QString& name, int idOrPoints, b
 
     if (isTopThree) {
         itemWidget->setStyleSheet("background-color: transparent;");
+        itemWidget->setFixedHeight(220); // Increased height to accommodate all elements
 
         QVBoxLayout* itemLayout = new QVBoxLayout(itemWidget);
         itemLayout->setContentsMargins(5, 5, 5, 5);
-        itemLayout->setSpacing(5);
+        itemLayout->setSpacing(8); // Consistent spacing between elements
         itemLayout->setAlignment(Qt::AlignCenter);
 
-        // Create medal widget based on rank
+        // Medal label - adjust positioning based on rank
         QLabel* medalLabel = new QLabel();
-
-        // Use PNG images for medals with error checking
         QPixmap medalPixmap;
         if (rank == 1) {
             medalPixmap.load(":/images/resources/gold_medal.png");
@@ -626,11 +686,27 @@ QWidget* LeaderboardAll::createLeaderItem(const QString& name, int idOrPoints, b
 
         medalLabel->setPixmap(medalPixmap.scaled(40, 40, Qt::KeepAspectRatio, Qt::SmoothTransformation));
         medalLabel->setFixedSize(40, 40);
+
+       /* // Add spacing above medal based on rank
+        if (rank == 1) {
+            itemLayout->addSpacing(15); // Extra space for gold medal
+        } else if (rank == 2) {
+            itemLayout->addSpacing(10); // Less space for silver
+        }*/
         itemLayout->addWidget(medalLabel, 0, Qt::AlignCenter);
 
-        // Profile or club picture - load from database if available
+        // Profile picture container with fixed size
+        QWidget* picContainer = new QWidget();
+        picContainer->setFixedSize(100, 100); // Give enough space for the photo
+
+        QVBoxLayout* picLayout = new QVBoxLayout(picContainer);
+        picLayout->setContentsMargins(0, 0, 0, 0);
+        picLayout->setSpacing(0);
+
         QLabel* profilePic = new QLabel();
         profilePic->setFixedSize(80, 80);
+        profilePic->setAlignment(Qt::AlignCenter);
+
 
         // Try to load profile/club image from database
         QPixmap profilePixmap;
@@ -652,6 +728,18 @@ QWidget* LeaderboardAll::createLeaderItem(const QString& name, int idOrPoints, b
 
                 if (!photoData.isEmpty()) {
                     if (profilePixmap.loadFromData(photoData)) {
+                        // Create circular profile photo
+                        QPixmap circularPhoto(80, 80);
+                        circularPhoto.fill(Qt::transparent);
+
+                        QPainter painter(&circularPhoto);
+                        painter.setRenderHint(QPainter::Antialiasing);
+                        painter.setBrush(QBrush(profilePixmap.scaled(80, 80, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)));
+                        painter.setPen(Qt::NoPen);
+                        painter.drawEllipse(0, 0, 80, 80);
+                        painter.end();
+
+                        profilePixmap = circularPhoto;
                         imageLoaded = true;
                     }
                 }
@@ -659,12 +747,19 @@ QWidget* LeaderboardAll::createLeaderItem(const QString& name, int idOrPoints, b
 
             // Fallback to default user image if needed
             if (!imageLoaded) {
-                profilePixmap.load(":/images/resources/user.png");
-                if (profilePixmap.isNull()) {
-                    qDebug() << "Failed to load user image";
+                profilePixmap = QPixmap(80, 80);
+                profilePixmap.fill(Qt::transparent);
+
+                QPixmap defaultUser(":/images/resources/user.png");
+                if (!defaultUser.isNull()) {
+                    QPainter painter(&profilePixmap);
+                    painter.setRenderHint(QPainter::Antialiasing);
+                    painter.setBrush(QBrush(defaultUser.scaled(80, 80, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)));
+                    painter.setPen(Qt::NoPen);
+                    painter.drawEllipse(0, 0, 80, 80);
+                    painter.end();
+                } else {
                     // Create a default user icon
-                    profilePixmap = QPixmap(80, 80);
-                    profilePixmap.fill(Qt::white);
                     QPainter painter(&profilePixmap);
                     painter.setPen(QPen(Qt::gray, 2));
                     painter.setBrush(Qt::lightGray);
@@ -687,6 +782,18 @@ QWidget* LeaderboardAll::createLeaderItem(const QString& name, int idOrPoints, b
                 QByteArray photoData = query.value(0).toByteArray();
                 if (!photoData.isEmpty()) {
                     if (profilePixmap.loadFromData(photoData)) {
+                        // Create circular club photo
+                        QPixmap circularPhoto(80, 80);
+                        circularPhoto.fill(Qt::transparent);
+
+                        QPainter painter(&circularPhoto);
+                        painter.setRenderHint(QPainter::Antialiasing);
+                        painter.setBrush(QBrush(profilePixmap.scaled(80, 80, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)));
+                        painter.setPen(Qt::NoPen);
+                        painter.drawEllipse(0, 0, 80, 80);
+                        painter.end();
+
+                        profilePixmap = circularPhoto;
                         imageLoaded = true;
                     }
                 }
@@ -694,12 +801,19 @@ QWidget* LeaderboardAll::createLeaderItem(const QString& name, int idOrPoints, b
 
             // Fallback to default club image if needed
             if (!imageLoaded) {
-                profilePixmap.load(":/images/resources/club.png");
-                if (profilePixmap.isNull()) {
-                    qDebug() << "Failed to load club image";
+                profilePixmap = QPixmap(80, 80);
+                profilePixmap.fill(Qt::transparent);
+
+                QPixmap defaultClub(":/images/resources/club.png");
+                if (!defaultClub.isNull()) {
+                    QPainter painter(&profilePixmap);
+                    painter.setRenderHint(QPainter::Antialiasing);
+                    painter.setBrush(QBrush(defaultClub.scaled(80, 80, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)));
+                    painter.setPen(Qt::NoPen);
+                    painter.drawEllipse(0, 0, 80, 80);
+                    painter.end();
+                } else {
                     // Create a default club icon
-                    profilePixmap = QPixmap(80, 80);
-                    profilePixmap.fill(Qt::white);
                     QPainter painter(&profilePixmap);
                     painter.setPen(QPen(Qt::gray, 2));
                     painter.setBrush(Qt::lightGray);
@@ -712,14 +826,17 @@ QWidget* LeaderboardAll::createLeaderItem(const QString& name, int idOrPoints, b
             }
         }
 
-        profilePic->setPixmap(profilePixmap.scaled(80, 80, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-        profilePic->setStyleSheet("border-radius: 40px; background-color: white;");
-        itemLayout->addWidget(profilePic, 0, Qt::AlignCenter);
+        profilePic->setPixmap(profilePixmap);
+        profilePic->setStyleSheet("border-radius: 40px; background-color: transparent;");
 
-        // Name
+        picLayout->addWidget(profilePic, 0, Qt::AlignCenter);
+        itemLayout->addWidget(picContainer);
+
+        // Name label with fixed maximum width to prevent overflow
         QLabel* nameLabel = new QLabel(name);
+        nameLabel->setMaximumWidth(120); // Prevent text from being too wide
         QFont nameFont;
-        nameFont.setPointSize(12);
+        nameFont.setPointSize(10); // Slightly reduced font size
         nameFont.setBold(true);
         nameLabel->setFont(nameFont);
         nameLabel->setAlignment(Qt::AlignCenter);
@@ -727,21 +844,27 @@ QWidget* LeaderboardAll::createLeaderItem(const QString& name, int idOrPoints, b
         nameLabel->setStyleSheet("color: #333;");
         itemLayout->addWidget(nameLabel);
 
-        // Points
+        // Points label
         QLabel* pointsLabel = new QLabel(QString::number(points) + " pts");
         QFont pointsFont;
-        pointsFont.setPointSize(14);
+        pointsFont.setPointSize(12); // Reduced font size for better balance
         pointsFont.setBold(true);
         pointsLabel->setFont(pointsFont);
         pointsLabel->setAlignment(Qt::AlignCenter);
-        pointsLabel->setStyleSheet("color: #4a6741;"); // Green color to match the theme
+        pointsLabel->setStyleSheet("color: #4a6741;");
         itemLayout->addWidget(pointsLabel);
+
+        // Adjust bottom spacing based on rank
+        if (rank == 3) {
+            itemLayout->addSpacing(10); // Extra space for bronze position
+        }
 
         return itemWidget;
     } else {
         return nullptr;
     }
 }
+
 
 void LeaderboardAll::clearLeaderboard()
 {
@@ -766,7 +889,7 @@ void LeaderboardAll::showMembersLeaderboard()
 void LeaderboardAll::showClubsLeaderboard()
 {
     m_currentTab = Clubs;
-    m_titleLabel->setText("Clubs Leaderboard");
+    m_titleLabel->setText("All Clubs Leaderboard");
     clearLeaderboard();
 }
 

@@ -62,7 +62,7 @@ void AdminMember::setupUI()
     mainLayout->addWidget(searchFrame);
 
     // Members label
-    membersLabel = new QLabel("Members:", this);
+    membersLabel = new QLabel("Users:", this);
     membersLabel->setFont(QFont("Arial", 18, QFont::Bold));
     mainLayout->addWidget(membersLabel);
 

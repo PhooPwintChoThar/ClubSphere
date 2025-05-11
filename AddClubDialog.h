@@ -39,5 +39,4 @@ private:
 
     void setupUI();
 };
-
-#endif // ADDCLUBDIALOG_H
+#endif

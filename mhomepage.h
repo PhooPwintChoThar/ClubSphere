@@ -40,6 +40,7 @@ private slots:
 private:
     void setupUI();
     void loadUserClubEvents();
+    QPixmap createCircularPixmap(const QPixmap& pixmap, int size);
 
     int m_userId;
     QVBoxLayout* m_mainLayout;

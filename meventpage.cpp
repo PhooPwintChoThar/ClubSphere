@@ -32,7 +32,7 @@ MEventCard::MEventCard(int eventId, const QString& clubName, const QDateTime& da
     // Profile image - Make it square
     m_profileImage = new QLabel(this);
     m_profileImage->setFixedSize(40, 40);
-    m_profileImage->setStyleSheet("border: 1px solid lightgray; background-color: lightgray;");
+    m_profileImage->setStyleSheet("border: 1px solid white; background-color: white;");
 
     // Load club photo from database based on club name
     QSqlQuery query;
@@ -50,7 +50,7 @@ MEventCard::MEventCard(int eventId, const QString& clubName, const QDateTime& da
 
                 // Center the image in the square frame
                 QPixmap centeredPixmap(40, 40);
-                centeredPixmap.fill(Qt::lightGray);
+                centeredPixmap.fill(Qt::white);
 
                 QPainter painter(&centeredPixmap);
                 // Calculate position to center the image
@@ -108,7 +108,7 @@ MEventCard::MEventCard(int eventId, const QString& clubName, const QDateTime& da
             m_eventImageLabel = new QLabel(this);
             m_eventImageLabel->setFixedHeight(280);
             m_eventImageLabel->setAlignment(Qt::AlignCenter);
-            m_eventImageLabel->setStyleSheet("background-color: #f5f5f5; border-radius: 5px;");
+            m_eventImageLabel->setStyleSheet("background-color: white; border-radius: 5px;");
             m_eventImageLabel->setPixmap(pixmap.scaled(335, 280, Qt::KeepAspectRatio, Qt::SmoothTransformation));
         }
     }
@@ -141,6 +141,8 @@ MEventCard::MEventCard(int eventId, const QString& clubName, const QDateTime& da
     // Connect going button
     connect(m_goingButton, &QPushButton::clicked, this, &MEventCard::onGoingClicked);
 }
+
+
 
 void MEventCard::onGoingClicked()
 {

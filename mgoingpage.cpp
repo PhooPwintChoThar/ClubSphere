@@ -228,34 +228,22 @@ void MGoingPage::setupUI()
     QSqlQuery profileQuery;
     profileQuery.prepare("SELECT profile_photo FROM users_list WHERE user_id = :userId");
     profileQuery.bindValue(":userId", m_currentUserId);
-
     if (profileQuery.exec() && profileQuery.next() && !profileQuery.value(0).isNull()) {
         QByteArray photoData = profileQuery.value(0).toByteArray();
         QPixmap userPhoto;
         if (userPhoto.loadFromData(photoData)) {
-            // Create circular profile photo
-            QPixmap circularPhoto = QPixmap(40, 40);
-            circularPhoto.fill(Qt::transparent);
-
-            QPainter painter(&circularPhoto);
-            painter.setRenderHint(QPainter::Antialiasing);
-            painter.setBrush(QBrush(userPhoto.scaled(40, 40, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)));
-            painter.setPen(Qt::NoPen);
-            painter.drawEllipse(0, 0, 40, 40);
-
-            profileIcon->setIcon(QIcon(circularPhoto));
+            // Create circular profile photo using the same approach as in MProfilePage
+            QPixmap roundedPixmap = createCircularPixmap(userPhoto, 24);
+            profileIcon->setIcon(QIcon(roundedPixmap));
             profileIcon->setIconSize(QSize(40, 40));
         } else {
-            // Fallback to default icon if image can't be loaded
             profileIcon->setIcon(QIcon(":/images/resources/user.png"));
-            profileIcon->setIconSize(QSize(24, 24));
+            profileIcon->setIconSize(QSize(40, 40)); // Match the size in MProfilePage
         }
     } else {
-        // Use default icon if no profile photo
         profileIcon->setIcon(QIcon(":/images/resources/user.png"));
-        profileIcon->setIconSize(QSize(24, 24));
+        profileIcon->setIconSize(QSize(40, 40)); // Match the size in MProfilePage
     }
-
     profileIcon->setFixedSize(40, 40);
     profileIcon->setStyleSheet("QPushButton { background-color: transparent; border: none; }");
 
@@ -294,6 +282,22 @@ void MGoingPage::setupUI()
     setFixedHeight(650);
 
     qDebug() << "MGoingPage setupUI completed successfully";
+}
+
+QPixmap MGoingPage::createCircularPixmap(const QPixmap& pixmap, int size)
+{
+    QPixmap scaledPixmap = pixmap.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+    QPixmap roundedPixmap(size, size);
+    roundedPixmap.fill(Qt::transparent);
+
+    QPainter painter(&roundedPixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(QBrush(scaledPixmap));
+    painter.drawEllipse(0, 0, size, size);
+
+    return roundedPixmap;
 }
 
 QWidget* MGoingPage::createClubEventItem(int eventId, const QString& clubName, const QString& eventContent, const QByteArray& eventPhoto, const QString& eventCode, QDateTime eventDate)

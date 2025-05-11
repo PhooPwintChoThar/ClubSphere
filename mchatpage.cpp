@@ -30,20 +30,44 @@ MBubbleMessage::MBubbleMessage(const QString &text, const QString &sender, const
     bubbleLayout->setSpacing(5);
     bubbleLayout->setContentsMargins(10, 10, 10, 10);
 
-    // Set bubble style and alignment based on message type
     if (type == Incoming) {
         bubbleWidget->setStyleSheet("background-color: #E8FDD8; border-radius: 10px;");
 
         // Add avatar for incoming messages
         QLabel *avatarLabel = new QLabel(this);
         avatarLabel->setFixedSize(32, 32);
-        avatarLabel->setStyleSheet("background-color: #E0E0E0; border-radius: 16px;");
+        avatarLabel->setStyleSheet("border-radius: 16px;");
 
-        // Get the first letter of sender and set it as avatar text if sender is provided
-        if (!sender.isEmpty()) {
-            QPainter painter(new QPixmap(32, 32));
+        // Get sender's photo from database
+        QSqlQuery photoQuery;
+        photoQuery.prepare("SELECT profile_photo FROM users_list WHERE user_id = (SELECT user_id FROM users_list WHERE name = :name LIMIT 1)");
+        photoQuery.bindValue(":name", sender);
+
+        if (photoQuery.exec() && photoQuery.next()) {
+            QByteArray photoData = photoQuery.value(0).toByteArray();
+            if (!photoData.isEmpty()) {
+                QPixmap pixmap;
+                if (pixmap.loadFromData(photoData)) {
+                    // Create circular avatar
+                    QPixmap circularPhoto(32, 32);
+                    circularPhoto.fill(Qt::transparent);
+
+                    QPainter painter(&circularPhoto);
+                    painter.setRenderHint(QPainter::Antialiasing);
+                    painter.setBrush(QBrush(pixmap.scaled(32, 32, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)));
+                    painter.setPen(Qt::NoPen);
+                    painter.drawEllipse(0, 0, 32, 32);
+
+                    avatarLabel->setPixmap(circularPhoto);
+                }
+            }
+        } else {
+            // Fallback to default avatar with first letter
             QPixmap avatar = createAvatar(sender.left(1), "#E0E0E0");
             avatarLabel->setPixmap(avatar);
+        }
+        // Get the first letter of sender and set it as avatar text if sender is provided
+        if (!sender.isEmpty()) {
 
             // Add sender name
             senderLabel = new QLabel(sender, this);
@@ -56,7 +80,7 @@ MBubbleMessage::MBubbleMessage(const QString &text, const QString &sender, const
         containerLayout->addStretch(1); // Keep message on the left
 
     } else {
-        bubbleWidget->setStyleSheet("background-color: #E8FDD8; border-radius: 10px;");
+        bubbleWidget->setStyleSheet("background-color: #F8F4A3; border-radius: 10px;");
         containerLayout->addStretch(1); // Push message to the right
         containerLayout->addWidget(bubbleWidget);
         senderLabel = nullptr;
@@ -200,7 +224,6 @@ void MChatPage::setupHeader()
     groupAvatarLabel->setFixedSize(40, 40);
     groupAvatarLabel->setStyleSheet("background-color: #E0E0E0; border-radius: 20px;");
 
-    // Load club photo if available
     QSqlQuery photoQuery;
     photoQuery.prepare("SELECT club_photo FROM clubs_list WHERE club_id = :clubId");
     photoQuery.bindValue(":clubId", m_clubId);
@@ -211,10 +234,22 @@ void MChatPage::setupHeader()
             QPixmap pixmap;
             if (pixmap.loadFromData(photoData)) {
                 // Create circular club avatar
-                QPixmap clubAvatar = createGroupAvatar(m_clubName.left(1), "#E0E0E0");
-                groupAvatarLabel->setPixmap(clubAvatar);
+                QPixmap circularPhoto(40, 40);
+                circularPhoto.fill(Qt::transparent);
+
+                QPainter painter(&circularPhoto);
+                painter.setRenderHint(QPainter::Antialiasing);
+                painter.setBrush(QBrush(pixmap.scaled(40, 40, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)));
+                painter.setPen(Qt::NoPen);
+                painter.drawEllipse(0, 0, 40, 40);
+
+                groupAvatarLabel->setPixmap(circularPhoto);
             }
         }
+    } else {
+        // Fallback to default avatar with first letter
+        QPixmap clubAvatar = createGroupAvatar(m_clubName.left(1), "#E0E0E0");
+        groupAvatarLabel->setPixmap(clubAvatar);
     }
 
     // Group info (name and status)

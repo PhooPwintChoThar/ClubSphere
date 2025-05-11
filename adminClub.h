@@ -11,6 +11,7 @@
 #include <QLineEdit>
 #include <QFont>
 #include "Club.h"
+#include  "database.h"
 #include "AddClubDialog.h"
 
 class AdminClub : public QWidget
@@ -40,6 +41,7 @@ private:
     void refreshClubList();
     void createClubCard(const Club& club);
     void setupSearchFunctionality();
+    void deleteClub(int clubId);
 
     QFrame* createRoundedFrame();
 

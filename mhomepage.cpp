@@ -63,7 +63,7 @@ void MHomepage::setupUI()
 
     // Join Club button
     QPushButton* joinClubButton = new QPushButton();
-    joinClubButton->setIcon(QIcon(":/images/resources/join_club.jpg"));
+    joinClubButton->setIcon(QIcon(":/images/resources/join_club.png"));
     joinClubButton->setIconSize(QSize(30, 30));
     joinClubButton->setFixedSize(45, 45);
     joinClubButton->setStyleSheet("QPushButton { background-color: #e0e0e0; border-radius: 22px; }");
@@ -146,34 +146,22 @@ void MHomepage::setupUI()
     QSqlQuery profileQuery;
     profileQuery.prepare("SELECT profile_photo FROM users_list WHERE user_id = :userId");
     profileQuery.bindValue(":userId", m_userId);
-
     if (profileQuery.exec() && profileQuery.next() && !profileQuery.value(0).isNull()) {
         QByteArray photoData = profileQuery.value(0).toByteArray();
         QPixmap userPhoto;
         if (userPhoto.loadFromData(photoData)) {
-            // Create circular profile photo
-            QPixmap circularPhoto = QPixmap(40, 40);
-            circularPhoto.fill(Qt::transparent);
-
-            QPainter painter(&circularPhoto);
-            painter.setRenderHint(QPainter::Antialiasing);
-            painter.setBrush(QBrush(userPhoto.scaled(40, 40, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)));
-            painter.setPen(Qt::NoPen);
-            painter.drawEllipse(0, 0, 40, 40);
-
-            profileIcon->setIcon(QIcon(circularPhoto));
+            // Create circular profile photo using the same approach as in MProfilePage
+            QPixmap roundedPixmap = createCircularPixmap(userPhoto, 24);
+            profileIcon->setIcon(QIcon(roundedPixmap));
             profileIcon->setIconSize(QSize(40, 40));
         } else {
-            // Fallback to default icon if image can't be loaded
             profileIcon->setIcon(QIcon(":/images/resources/user.png"));
-            profileIcon->setIconSize(QSize(24, 24));
+            profileIcon->setIconSize(QSize(40, 40)); // Match the size in MProfilePage
         }
     } else {
-        // Use default icon if no profile photo
         profileIcon->setIcon(QIcon(":/images/resources/user.png"));
-        profileIcon->setIconSize(QSize(24, 24));
+        profileIcon->setIconSize(QSize(40, 40)); // Match the size in MProfilePage
     }
-
     profileIcon->setFixedSize(40, 40);
     profileIcon->setStyleSheet("QPushButton { background-color: transparent; border: none; }");
 
@@ -204,6 +192,21 @@ void MHomepage::setupUI()
     setMinimumHeight(650);
 }
 
+QPixmap MHomepage::createCircularPixmap(const QPixmap& pixmap, int size)
+{
+    QPixmap scaledPixmap = pixmap.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+    QPixmap roundedPixmap(size, size);
+    roundedPixmap.fill(Qt::transparent);
+
+    QPainter painter(&roundedPixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(QBrush(scaledPixmap));
+    painter.drawEllipse(0, 0, size, size);
+
+    return roundedPixmap;
+}
 void MHomepage::loadUserClubEvents()
 {
     // Clear existing events

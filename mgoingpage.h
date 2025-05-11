@@ -32,6 +32,7 @@ private:
     void setupUI();
     QWidget* createClubEventItem(int eventId, const QString& clubName, const QString& eventContent, const QByteArray& eventPhoto, const QString& eventCode, QDateTime eventDate);
     QWidget* createSeparator();
+    QPixmap createCircularPixmap(const QPixmap& pixmap, int size);
 
     // Helper method to update user points
     bool updateUserPoints(int userId, int pointsToAdd);
